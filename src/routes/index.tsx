@@ -3,6 +3,8 @@ import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
 import { MainLayout } from "../layouts/MainLayout";
 import { useAuth } from "../contexts/AuthContext";
+import { PartnerPage } from "../pages/PartnerPage";
+import { RoleSelectionPage } from "../pages/RoleSelection";
 
 // Layout wrapper component
 function WithLayout({ children }: { children: React.ReactNode }) {
@@ -30,6 +32,26 @@ export const routes: RouteObject[] = [
       <RequireAuth>
         <WithLayout>
           <HomePage />
+        </WithLayout>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/partner",
+    element: (
+      <RequireAuth>
+        <WithLayout>
+          <PartnerPage />
+        </WithLayout>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/role",
+    element: (
+      <RequireAuth>
+        <WithLayout>
+          <RoleSelectionPage />
         </WithLayout>
       </RequireAuth>
     ),

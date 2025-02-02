@@ -1,35 +1,56 @@
+// src/contexts/AuthContext.tsx
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
-}
+import { UserPreference, AuthContextType, PushSubscriptionData } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userPreferences, setUserPreferences] = useState<UserPreference | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function loadUserSession() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          const { data: preferences } = await supabase.from('user_preferences').select('*').eq('user_id', session.user.id).single();
+
+          setUserPreferences(preferences);
+
+          // Handle navigation based on user state
+          if (!preferences?.role) {
+            navigate('/role');
+          } else {
+            navigate(preferences.role === 'partner' ? '/partner' : '/home');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user session:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUserSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user) {
-        navigate('/home');
-      }
-    });
-
-    // Listen for changes on auth state (signed in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
@@ -41,8 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         provider: 'google',
       });
       if (error) throw error;
-      // Redirect to /home after successful login
-      navigate('/home');
     } catch (error) {
       console.error('Error signing in with Google:', error);
       throw error;
@@ -53,7 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // Redirect to / after successful logout
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -61,11 +79,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const updateUserReminderTime = async (userId: string, reminderTime: string, subscription: PushSubscriptionData): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: userId,
+          reminder_time: reminderTime,
+          subscription: JSON.stringify(subscription),
+        })
+        .select();
+
+      return !error;
+    } catch (error) {
+      console.error('Error updating reminder time:', error);
+      return false;
+    }
+  };
+
+  const contextValue: AuthContextType = {
+    user,
+    loading,
+    userPreferences,
+    signInWithGoogle,
+    signOut,
+    updateUserReminderTime,
+  };
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {

@@ -11,11 +11,11 @@ const Header = () => {
         <Title>Pilr.</Title>
         <Group>
           {user ? (
-            <Button onClick={signOut} color="rgba(0, 0, 0, 1)" variant="filled">
+            <Button onClick={signOut} color="black" variant="filled">
               Logout
             </Button>
           ) : (
-            <Button onClick={signInWithGoogle} color="rgba(0, 0, 0, 1)" variant="filled">
+            <Button onClick={signInWithGoogle} color="black" variant="filled">
               Login
             </Button>
           )}
