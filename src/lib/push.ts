@@ -6,7 +6,7 @@ import { PushSubscriptionData } from '../types';
  */
 
 // Constants
-const SW_PATH = import.meta.env.VITE_MODE === 'production' ? '/sw.js' : '/dev-sw.js?dev-sw';
+const SW_PATH = import.meta.env.DEV ? '/dev-sw.js?dev-sw' : '/sw.js';
 
 /**
  * Registers the service worker

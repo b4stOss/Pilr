@@ -35,7 +35,6 @@ export interface PillTracking {
   next_notification_time: string; // ISO string
   taken_at: string | null;
   created_at: string;
-  updated_at: string | null;
 }
 
 // Partner relationship

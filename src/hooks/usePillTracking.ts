@@ -83,7 +83,6 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
       setError(null);
       const updates: Partial<PillTracking> = {
         status,
-        updated_at: new Date().toISOString(),
       };
 
       if (status === 'taken') {
