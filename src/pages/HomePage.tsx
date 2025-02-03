@@ -197,7 +197,7 @@ export function HomePage() {
         </Tabs>
 
         <Flex justify="center" direction="column" gap="md" mt="auto" pb="md">
-          <Button color="black" onClick={toggle} variant="outline">
+          <Button color="black" onClick={toggle} variant="outline" radius="xl">
             Edit reminder
           </Button>
 

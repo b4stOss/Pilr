@@ -2,13 +2,18 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import fs from 'fs';
 
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // Use generateSW strategy instead of your current custom SW
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
-      includeAssets: ['192.png', '512.png'],
+      // Your web app manifest
       manifest: {
         name: 'Pilr',
         short_name: 'Pilr',
@@ -29,9 +34,7 @@ export default defineConfig({
           },
         ],
       },
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'sw.js',
+      // Enable PWA in development
       devOptions: {
         enabled: true,
         type: 'module',
@@ -40,5 +43,9 @@ export default defineConfig({
   ],
   server: {
     allowedHosts: ['localhost', '.ngrok-free.app'],
+    https: {
+      key: fs.readFileSync('localhost+2-key.pem'),
+      cert: fs.readFileSync('localhost+2.pem'),
+    },
   },
 });

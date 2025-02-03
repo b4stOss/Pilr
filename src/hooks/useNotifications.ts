@@ -1,5 +1,4 @@
-// src/hooks/useNotifications.ts
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../types';
 import { registerServiceWorker, isPushSupported, getNotificationPermission, formatPushSubscription } from '../lib/push';
@@ -15,7 +14,6 @@ interface UseNotificationsReturn {
   error: string | null;
   subscribe: () => Promise<boolean>;
   unsubscribe: () => Promise<boolean>;
-  checkSubscription: () => Promise<boolean>;
 }
 
 const PUBLIC_VAPID_KEY = import.meta.env.VITE_PUBLIC_VAPID_KEY;
@@ -25,35 +23,12 @@ export const useNotifications = ({ userId }: UseNotificationsProps): UseNotifica
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Check subscription status on mount
-    checkSubscription();
-  }, [userId]);
-
   const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     const rawData = window.atob(base64);
     return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
   };
-
-  const checkSubscription = useCallback(async (): Promise<boolean> => {
-    if (!isPushSupported()) {
-      setError('Push notifications are not supported by your browser');
-      return false;
-    }
-
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      const isSubbed = !!subscription;
-      setIsSubscribed(isSubbed);
-      return isSubbed;
-    } catch (err) {
-      console.error('Error checking subscription:', err);
-      return false;
-    }
-  }, []);
 
   const subscribe = async (): Promise<boolean> => {
     if (!isPushSupported()) {
@@ -135,6 +110,5 @@ export const useNotifications = ({ userId }: UseNotificationsProps): UseNotifica
     error,
     subscribe,
     unsubscribe,
-    checkSubscription,
   };
 };

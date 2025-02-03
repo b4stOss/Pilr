@@ -40,7 +40,7 @@ export function usePartnerManagement({ userId }: UsePartnerManagementProps): Use
         .select('partner_id')
         .eq('user_id', userId)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
       if (activePartnerError && activePartnerError.code !== 'PGRST116') {
         throw activePartnerError;

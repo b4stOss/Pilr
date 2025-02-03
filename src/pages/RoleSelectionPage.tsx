@@ -14,7 +14,7 @@ export function RoleSelectionPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // We'll initialize the hook with empty values and update them after role selection
-  const { subscribe, error: notificationError } = useNotifications({
+  const { error: notificationError } = useNotifications({
     userId: user?.id || '',
     userRole: selectedRole || 'user',
   });
@@ -26,7 +26,7 @@ export function RoleSelectionPage() {
     setSelectedRole(role);
 
     try {
-      // 1. Save role to DB
+      // Save role to DB
       const { error: roleError } = await supabase
         .from('user_preferences')
         .upsert({
@@ -38,18 +38,10 @@ export function RoleSelectionPage() {
 
       if (roleError) throw roleError;
 
-      // 2. Set up notifications
-      const notificationSuccess = await subscribe();
-
-      if (!notificationSuccess) {
-        console.warn('Notification setup failed, but continuing with role setup');
-      }
-
-      // 3. Navigate based on role
-      navigate(role === 'partner' ? '/partner' : '/home');
+      // Instead of handling notifications here, redirect to notification page
+      navigate('/notifications');
     } catch (error) {
       console.error('Failed to set role:', error);
-      // You might want to add error handling UI here
     } finally {
       setIsProcessing(false);
     }

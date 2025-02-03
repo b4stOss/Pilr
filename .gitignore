@@ -30,3 +30,6 @@ pnpm-lock.yaml
 
 src/assets/icons
 key.json
+
+localhost+2.pem
+localhost+2-key.pem

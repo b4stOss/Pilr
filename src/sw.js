@@ -9,7 +9,29 @@ const ASSETS = ['/', '/index.html'];
 
 // Install event - cache critical assets
 self.addEventListener('install', (event) => {
+  // Activate new service worker immediately
+  self.skipWaiting();
+
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+});
+
+// Activate event - cleanup old caches and take control
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      clients.claim(), // Take control of all open clients
+      // Cleanup old caches
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          }),
+        ),
+      ),
+    ]),
+  );
 });
 
 // Push notification handling

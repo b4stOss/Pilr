@@ -70,8 +70,8 @@ export function formatPushSubscription(subscription: PushSubscription): PushSubs
     endpoint: subscriptionJson.endpoint || '',
     keys: {
       p256dh: subscriptionJson.keys?.p256dh || '',
-      auth: subscriptionJson.keys?.auth || ''
-    }
+      auth: subscriptionJson.keys?.auth || '',
+    },
   };
 }
 

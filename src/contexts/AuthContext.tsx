@@ -29,10 +29,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           const { data: preferences } = await supabase.from('user_preferences').select('*').eq('user_id', session.user.id).single();
 
           setUserPreferences(preferences);
-
-          // Handle navigation based on user state
+          // Handle navigation based on user state and notification permission
           if (!preferences?.role) {
             navigate('/role');
+          } else if (!preferences?.subscription || Notification.permission !== 'granted') {
+            // Only redirect to notification page if we don't have subscription and permissions
+            navigate('/notifications');
           } else {
             navigate(preferences.role === 'partner' ? '/partner' : '/home');
           }

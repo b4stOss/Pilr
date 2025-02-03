@@ -1,9 +1,7 @@
-// src/pages/PartnerPage.tsx
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Button, Center, Container, Text, Title, Loader, Stack, Tabs } from '@mantine/core';
-import { useNotifications } from '../hooks/useNotifications';
+import { Center, Container, Text, Title, Loader, Stack, Tabs } from '@mantine/core';
 import { usePillTracking } from '../hooks/usePillTracking';
 import { PillList } from '../components/PillList';
 import { PillHistory } from '../components/PillHistory';
@@ -16,16 +14,6 @@ export function PartnerPage() {
   const [error, setError] = useState<string | null>(null);
 
   const {
-    isSubscribed,
-    isSubscribing,
-    error: notificationError,
-    subscribe,
-  } = useNotifications({
-    userId: user?.id || '',
-    userRole: 'partner',
-  });
-
-  const {
     todayPills,
     historyPills,
     error: pillError,
@@ -35,9 +23,11 @@ export function PartnerPage() {
   });
 
   useEffect(() => {
+    let mounted = true;
+
     const fetchLinkedUser = async () => {
       if (!user?.id) {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
         return;
       }
 
@@ -48,28 +38,29 @@ export function PartnerPage() {
           .select('user_id')
           .eq('partner_id', user.id)
           .eq('status', 'active')
-          .maybeSingle(); // Using maybeSingle() instead of single()
+          .maybeSingle();
 
-        // Only set the linked user ID if we found one
-        if (data) {
-          setLinkedUserId(data.user_id);
+        if (mounted) {
+          if (data) {
+            setLinkedUserId(data.user_id);
+          }
+          setIsLoading(false);
         }
       } catch (err) {
-        console.error('Error fetching linked user:', err);
-        setError('Failed to fetch user link');
-      } finally {
-        console.log('Setting loading to false');
-        setIsLoading(false);
+        if (mounted) {
+          console.error('Error fetching linked user:', err);
+          setError('Failed to fetch user link');
+          setIsLoading(false);
+        }
       }
     };
 
     fetchLinkedUser();
-  }, [user]);
 
-  const handleEnableNotifications = async () => {
-    if (!user) return;
-    await subscribe();
-  };
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -111,13 +102,7 @@ export function PartnerPage() {
     <Container style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Header />
       <Stack mt="xl">
-        {(notificationError || pillError) && <Text size="sm">{notificationError || pillError}</Text>}
-
-        {!isSubscribed && (
-          <Button color="black" onClick={handleEnableNotifications} loading={isSubscribing}>
-            Enable Partner Notifications
-          </Button>
-        )}
+        {pillError && <Text size="sm">{pillError}</Text>}
 
         <Tabs defaultValue="today" color="black">
           <Tabs.List grow>
