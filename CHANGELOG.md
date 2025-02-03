@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.4](https://github.com/Batgame/pill-pwa/compare/v0.0.3...v0.0.4) (2025-02-03)
+
+
+### Bug Fixes
+
+* bugs ([cb6181b](https://github.com/Batgame/pill-pwa/commit/cb6181b29f7a65923a8f66027a370bbb8477201f))
+
 ### [0.0.3](https://github.com/Batgame/pill-pwa/compare/v0.0.2...v0.0.3) (2025-02-03)
 
 
