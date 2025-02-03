@@ -1,8 +1,24 @@
 // vite.config.ts
-import { defineConfig } from 'vite';
+import { defineConfig, ServerOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
+
+// Helper function to load SSL certificates in development
+const getHttpsConfig = (): ServerOptions['https'] => {
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      return {
+        key: fs.readFileSync('localhost+2-key.pem'),
+        cert: fs.readFileSync('localhost+2.pem'),
+      };
+    } catch {
+      console.warn('SSL certificates not found, falling back to HTTP');
+      return undefined;
+    }
+  }
+  return undefined;
+};
 
 export default defineConfig({
   plugins: [
@@ -43,9 +59,6 @@ export default defineConfig({
   ],
   server: {
     allowedHosts: ['localhost', '.ngrok-free.app'],
-    https: {
-      key: fs.readFileSync('localhost+2-key.pem'),
-      cert: fs.readFileSync('localhost+2.pem'),
-    },
+    https: getHttpsConfig(),
   },
 });
