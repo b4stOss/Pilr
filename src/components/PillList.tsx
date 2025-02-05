@@ -10,6 +10,7 @@ export const StatusBadge = ({ status }: { status: PillStatus }) => {
   const colorMap: Record<PillStatus, string> = {
     pending: 'yellow',
     taken: 'green',
+    late: 'orange',
     missed: 'red',
   };
 
@@ -49,13 +50,14 @@ export function PillList({ pills, onStatusChange }: PillListProps) {
               <Text fw={700}>{formatTime(pill.scheduled_time)}</Text>
             </Group>
 
-            {pill.status === 'pending' && (
-              <Button variant="light" color="green" size="sm" onClick={() => onStatusChange(pill.id, 'taken')}>
-                Mark Taken
-              </Button>
-            )}
+            {pill.status === 'pending' ||
+              (pill.status === 'late' && (
+                <Button variant="light" color="green" size="sm" onClick={() => onStatusChange(pill.id, 'taken')}>
+                  Mark Taken
+                </Button>
+              ))}
 
-            {pill.status !== 'pending' && pill.taken_at && <Text size="sm">Taken at {formatTime(pill.taken_at)}</Text>}
+            {pill.status !== 'pending' && pill.status !== 'late' && pill.taken_at && <Text size="sm">Taken at {formatTime(pill.taken_at)}</Text>}
           </Flex>
         ))
       )}
