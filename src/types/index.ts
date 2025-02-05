@@ -24,7 +24,7 @@ export interface UserPreference {
 }
 
 // Pill tracking with all possible states
-export type PillStatus = 'pending' | 'taken' | 'missed';
+export type PillStatus = 'pending' | 'taken' | 'late' | 'missed';
 
 export interface PillTracking {
   id: string;

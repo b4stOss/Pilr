@@ -14,11 +14,23 @@ import { usePartnerManagement } from '../hooks/usePartnerManagement';
 import { PartnerManagement } from '../components/PartnerManagement';
 import { TimeInput } from '@mantine/dates';
 
+function isValidTimeFormat(time: string): boolean {
+  // First check if it's a valid time
+  if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+    return false;
+  }
+
+  // Then check if minutes are divisible by 5
+  const minutes = parseInt(time.split(':')[1]);
+  return minutes % 5 === 0;
+}
+
 export function HomePage() {
   const { user } = useAuth();
   const [reminderTime, setReminderTime] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [opened, { toggle }] = useDisclosure(false);
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   const {
     isSubscribed,
@@ -85,8 +97,26 @@ export function HomePage() {
     fetchReminderTime();
   }, [user]);
 
+  const handleTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = event.target.value;
+    setReminderTime(newTime);
+
+    // Clear error if input is empty (allowing user to type)
+    if (!newTime) {
+      setTimeError(null);
+      return;
+    }
+
+    // Show error if time isn't in 5-minute intervals
+    if (!isValidTimeFormat(newTime)) {
+      setTimeError('Time should be in 5-minute intervals (e.g., 09:00, 09:05, 09:10)');
+    } else {
+      setTimeError(null);
+    }
+  };
+
   const handleSaveReminderTime = async () => {
-    if (!user?.id || !reminderTime) return;
+    if (!user?.id || !reminderTime || timeError) return;
 
     setIsSaving(true);
     try {
@@ -203,7 +233,7 @@ export function HomePage() {
 
           <Collapse in={opened}>
             <Stack align="center">
-              <TimeInput value={reminderTime} step={1800} onChange={(event) => setReminderTime(event.target.value)} withSeconds={false} />
+              <TimeInput value={reminderTime} step={1800} onChange={handleTimeChange} withSeconds={false} error={timeError} />
               {/* <NativeSelect
                 value={reminderTime}
                 size="md"
@@ -218,7 +248,7 @@ export function HomePage() {
                 searchable
                 placeholder="Select time"
               /> */}
-              <Button onClick={handleSaveReminderTime} color="black" loading={isSaving} disabled={!reminderTime}>
+              <Button onClick={handleSaveReminderTime} color="black" loading={isSaving} disabled={!reminderTime || !!timeError}>
                 Save
               </Button>
             </Stack>
