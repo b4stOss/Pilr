@@ -109,7 +109,7 @@ export function HomePage() {
 
     // Show error if time isn't in 5-minute intervals
     if (!isValidTimeFormat(newTime)) {
-      setTimeError('Please choose a time in 5-minute intervals (e.g., 09:00, 09:05, 09:10)');
+      setTimeError('Time should be in 5-minute intervals (e.g., 09:00, 09:05, 09:10)');
     } else {
       setTimeError(null);
     }
@@ -233,13 +233,7 @@ export function HomePage() {
 
           <Collapse in={opened}>
             <Stack align="center">
-              <TimeInput
-                value={reminderTime}
-                step={1800}
-                onChange={(event) => setReminderTime(event.target.value)}
-                withSeconds={false}
-                error={timeError}
-              />
+              <TimeInput value={reminderTime} step={1800} onChange={handleTimeChange} withSeconds={false} error={timeError} />
               {/* <NativeSelect
                 value={reminderTime}
                 size="md"
