@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { UserRole } from '../types';
 import { registerServiceWorker, isPushSupported, getNotificationPermission, formatPushSubscription } from '../lib/push';
 
 interface UseNotificationsProps {
   userId: string;
-  userRole: UserRole;
+  isInitiallySubscribed?: boolean;
 }
 
 interface UseNotificationsReturn {
@@ -18,8 +17,8 @@ interface UseNotificationsReturn {
 
 const PUBLIC_VAPID_KEY = import.meta.env.VITE_PUBLIC_VAPID_KEY;
 
-export const useNotifications = ({ userId }: UseNotificationsProps): UseNotificationsReturn => {
-  const [isSubscribed, setIsSubscribed] = useState(false);
+export const useNotifications = ({ userId, isInitiallySubscribed = false }: UseNotificationsProps): UseNotificationsReturn => {
+  const [isSubscribed, setIsSubscribed] = useState(Boolean(isInitiallySubscribed));
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,12 +64,14 @@ export const useNotifications = ({ userId }: UseNotificationsProps): UseNotifica
       }
 
       // Save subscription to Supabase
+      const formattedSubscription = formatPushSubscription(subscription);
+
       const { error: dbError } = await supabase
-        .from('user_preferences')
-        .update({
-          subscription: formatPushSubscription(subscription),
-        })
-        .eq('user_id', userId);
+        .from('users')
+        .upsert({
+          id: userId,
+          push_subscription: formattedSubscription,
+        });
 
       if (dbError) throw dbError;
 
@@ -93,7 +94,12 @@ export const useNotifications = ({ userId }: UseNotificationsProps): UseNotifica
         await subscription.unsubscribe();
 
         // Remove subscription from database
-        await supabase.from('user_preferences').update({ subscription: null }).eq('user_id', userId);
+        const { error: dbError } = await supabase
+          .from('users')
+          .update({ push_subscription: null })
+          .eq('id', userId);
+
+        if (dbError) throw dbError;
       }
 
       setIsSubscribed(false);

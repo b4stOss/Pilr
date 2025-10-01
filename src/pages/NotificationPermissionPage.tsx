@@ -1,25 +1,25 @@
 import { Button, Center, Title, Text, Stack } from '@mantine/core';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
 import { useAuth } from '../contexts/AuthContext';
-import { useState, useEffect } from 'react';
 
 export function NotificationPermissionPage() {
   const navigate = useNavigate();
-  const { user, userPreferences } = useAuth();
+  const { user, activeRole, hasPushSubscription, refreshProfile } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { error, subscribe } = useNotifications({
     userId: user?.id || '',
-    userRole: userPreferences?.role || 'user',
+    isInitiallySubscribed: hasPushSubscription,
   });
 
   // Handle auth check in useEffect
   useEffect(() => {
-    if (!user || !userPreferences) {
+    if (!user || !activeRole) {
       navigate('/');
     }
-  }, [user, userPreferences, navigate]);
+  }, [user, activeRole, navigate]);
 
   const handleEnableNotifications = async () => {
     try {
@@ -28,7 +28,8 @@ export function NotificationPermissionPage() {
 
       if (success) {
         // Navigate to appropriate page based on role
-        navigate(userPreferences?.role === 'partner' ? '/partner' : '/home');
+        await refreshProfile();
+        navigate(activeRole === 'partner' ? '/partner' : '/home');
       }
     } catch (err) {
       console.error('Failed to enable notifications:', err);
@@ -38,7 +39,7 @@ export function NotificationPermissionPage() {
   };
 
   // If no user or preferences, render nothing while the effect handles navigation
-  if (!user || !userPreferences) {
+  if (!user || !activeRole) {
     return null;
   }
 

@@ -33,16 +33,21 @@ export function PartnerPage() {
 
       try {
         setError(null);
-        const { data } = await supabase
-          .from('user_partners')
-          .select('user_id')
+        const { data, error } = await supabase
+          .from('partnerships')
+          .select('pill_taker_id, status')
           .eq('partner_id', user.id)
           .eq('status', 'active')
           .maybeSingle();
 
         if (mounted) {
-          if (data) {
-            setLinkedUserId(data.user_id);
+          if (error && error.code !== 'PGRST116') {
+            console.error('Error fetching linked user:', error);
+            setError('Failed to fetch user link');
+          }
+
+          if (data?.pill_taker_id) {
+            setLinkedUserId(data.pill_taker_id);
           }
           setIsLoading(false);
         }

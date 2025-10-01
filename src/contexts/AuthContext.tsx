@@ -1,9 +1,9 @@
 // src/contexts/AuthContext.tsx
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from 'react-router-dom';
-import { UserPreference, AuthContextType, PushSubscriptionData } from '../types';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { AuthContextType, PillTakerProfile, Partnership, UserProfile, AppRole } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -14,35 +14,89 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userPreferences, setUserPreferences] = useState<UserPreference | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [pillTakerProfile, setPillTakerProfile] = useState<PillTakerProfile | null>(null);
+  const [partnerships, setPartnerships] = useState<Partnership[]>([]);
+  const [activeRole, setActiveRole] = useState<AppRole | null>(null);
+  const [hasPushSubscription, setHasPushSubscription] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const ensureUserRow = useCallback(async (authUser: User) => {
+    try {
+      await supabase.from('users').upsert({
+        id: authUser.id,
+        email: authUser.email,
+      });
+    } catch (error) {
+      console.error('Failed to upsert user profile:', error);
+    }
+  }, []);
+
+  const fetchProfile = useCallback(
+    async (userId: string) => {
+      try {
+        const { data: userData, error: userError } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+        if (userError) throw userError;
+        setProfile(userData ?? null);
+        setHasPushSubscription(Boolean(userData?.push_subscription));
+
+        const { data: pillData, error: pillError } = await supabase.from('pill_takers').select('*').eq('user_id', userId).maybeSingle();
+        if (pillError && pillError.code !== 'PGRST116') throw pillError;
+        const activePillTaker = pillData && pillData.active !== false ? (pillData as PillTakerProfile) : null;
+        setPillTakerProfile(activePillTaker);
+
+        const { data: partnershipsData, error: partnershipsError } = await supabase
+          .from('partnerships')
+          .select('*')
+          .or(`pill_taker_id.eq.${userId},partner_id.eq.${userId}`);
+
+        if (partnershipsError) throw partnershipsError;
+        setPartnerships(partnershipsData ?? []);
+
+        const computedRole: AppRole | null = activePillTaker
+          ? 'pill_taker'
+          : (partnershipsData ?? []).some((p) => p.partner_id === userId && p.status === 'active')
+            ? 'partner'
+            : null;
+
+        setActiveRole(computedRole);
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadUserSession() {
+      setLoading(true);
       try {
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        if (!isMounted) return;
+
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          const { data: preferences } = await supabase.from('user_preferences').select('*').eq('user_id', session.user.id).single();
-
-          setUserPreferences(preferences);
-          // Handle navigation based on user state and notification permission
-          if (!preferences?.role) {
-            navigate('/role');
-          } else if (!preferences?.subscription || Notification.permission !== 'granted') {
-            // Only redirect to notification page if we don't have subscription and permissions
-            navigate('/notifications');
-          } else {
-            navigate(preferences.role === 'partner' ? '/partner' : '/home');
-          }
+          await ensureUserRow(session.user);
+          await fetchProfile(session.user.id);
+        } else {
+          setProfile(null);
+          setPillTakerProfile(null);
+          setPartnerships([]);
+          setActiveRole(null);
+          setHasPushSubscription(false);
         }
       } catch (error) {
         console.error('Error loading user session:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
@@ -51,12 +105,59 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
+      if (!isMounted) return;
+      if (session?.user) {
+        setUser(session.user);
+        setLoading(true);
+        await ensureUserRow(session.user);
+        await fetchProfile(session.user.id);
+      } else {
+        setUser(null);
+        setProfile(null);
+        setPillTakerProfile(null);
+        setPartnerships([]);
+        setActiveRole(null);
+        setHasPushSubscription(false);
+      }
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [ensureUserRow, fetchProfile]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+
+    const currentPath = location.pathname;
+    const permissionGranted =
+      typeof Notification !== 'undefined' ? Notification.permission === 'granted' : false;
+
+    if (!activeRole) {
+      if (currentPath !== '/role') {
+        navigate('/role', { replace: true });
+      }
+      return;
+    }
+
+    if ((!hasPushSubscription || !permissionGranted) && currentPath !== '/notifications') {
+      navigate('/notifications', { replace: true });
+      return;
+    }
+
+    if (activeRole === 'partner') {
+      if (currentPath !== '/partner' && currentPath !== '/notifications') {
+        navigate('/partner', { replace: true });
+      }
+      return;
+    }
+
+    if (activeRole === 'pill_taker' && currentPath !== '/home' && currentPath !== '/notifications') {
+      navigate('/home', { replace: true });
+    }
+  }, [activeRole, hasPushSubscription, loading, navigate, location.pathname, user]);
 
   const signInWithGoogle = async () => {
     try {
@@ -83,31 +184,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const updateUserReminderTime = async (userId: string, reminderTime: string, subscription: PushSubscriptionData): Promise<boolean> => {
-    try {
-      const { error } = await supabase
-        .from('user_preferences')
-        .upsert({
-          user_id: userId,
-          reminder_time: reminderTime,
-          subscription: JSON.stringify(subscription),
-        })
-        .select();
-
-      return !error;
-    } catch (error) {
-      console.error('Error updating reminder time:', error);
-      return false;
-    }
-  };
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    await fetchProfile(user.id);
+    setLoading(false);
+  }, [fetchProfile, user]);
 
   const contextValue: AuthContextType = {
     user,
     loading,
-    userPreferences,
+    profile,
+    pillTakerProfile,
+    partnerships,
+    activeRole,
+    hasPushSubscription,
     signInWithGoogle,
     signOut,
-    updateUserReminderTime,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

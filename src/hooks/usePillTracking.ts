@@ -81,17 +81,33 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
   const markPillStatus = async (pillId: string, status: PillStatus) => {
     try {
       setError(null);
+      const nowIso = new Date().toISOString();
       const updates: Partial<PillTracking> = {
         status,
+        updated_at: nowIso,
       };
 
       if (status === 'taken') {
-        updates.taken_at = new Date().toISOString();
+        updates.taken_at = nowIso;
       }
 
       const { error: updateError } = await supabase.from('pill_tracking').update(updates).eq('id', pillId);
 
       if (updateError) throw updateError;
+
+      if (status === 'taken') {
+        const { error: queueError } = await supabase
+          .from('notification_queue')
+          .update({
+            processed_at: nowIso,
+            success: true,
+            error_message: 'Cancelled after pill marked as taken',
+          })
+          .eq('pill_id', pillId)
+          .is('processed_at', null);
+
+        if (queueError) throw queueError;
+      }
 
       // Update local state for both today and history
       const updatePills = (pills: PillTracking[]) => pills.map((pill) => (pill.id === pillId ? { ...pill, ...updates } : pill));

@@ -4,240 +4,350 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[]
+  | Json[];
 
 export type Database = {
   public: {
     Tables: {
-      partner_subscriptions: {
+      notification_log: {
         Row: {
-          created_at: string | null
-          subscription: Json
-          user_id: string
-        }
+          id: string;
+          pill_id: string;
+          recipient_id: string;
+          notification_type: string;
+          attempt_number: number;
+          sent_at: string;
+          success: boolean;
+          error_message: string | null;
+        };
         Insert: {
-          created_at?: string | null
-          subscription: Json
-          user_id: string
-        }
+          id?: string;
+          pill_id: string;
+          recipient_id: string;
+          notification_type: string;
+          attempt_number?: number;
+          sent_at?: string;
+          success?: boolean;
+          error_message?: string | null;
+        };
         Update: {
-          created_at?: string | null
-          subscription?: Json
-          user_id?: string
-        }
-        Relationships: []
-      }
-      pill_tracking: {
-        Row: {
-          created_at: string | null
-          id: string
-          last_notification_at: string | null
-          next_notification_time: string
-          notification_count: number
-          scheduled_time: string
-          status: string
-          taken_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          last_notification_at?: string | null
-          next_notification_time: string
-          notification_count?: number
-          scheduled_time: string
-          status?: string
-          taken_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          last_notification_at?: string | null
-          next_notification_time?: string
-          notification_count?: number
-          scheduled_time?: string
-          status?: string
-          taken_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_partners: {
-        Row: {
-          created_at: string | null
-          id: string
-          notification_enabled: boolean
-          partner_id: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          notification_enabled?: boolean
-          partner_id: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          notification_enabled?: boolean
-          partner_id?: string
-          status?: string
-          user_id?: string
-        }
+          id?: string;
+          pill_id?: string;
+          recipient_id?: string;
+          notification_type?: string;
+          attempt_number?: number;
+          sent_at?: string;
+          success?: boolean;
+          error_message?: string | null;
+        };
         Relationships: [
           {
-            foreignKeyName: "user_partners_partner_id_fkey"
-            columns: ["partner_id"]
-            isOneToOne: false
-            referencedRelation: "user_preferences"
-            referencedColumns: ["user_id"]
+            foreignKeyName: 'notification_log_pill_id_fkey';
+            columns: ['pill_id'];
+            isOneToOne: false;
+            referencedRelation: 'pill_tracking';
+            referencedColumns: ['id'];
           },
           {
-            foreignKeyName: "user_partners_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "user_preferences"
-            referencedColumns: ["user_id"]
+            foreignKeyName: 'notification_log_recipient_id_fkey';
+            columns: ['recipient_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
           },
-        ]
-      }
-      user_preferences: {
+        ];
+      };
+      notification_queue: {
         Row: {
-          email: string | null
-          reminder_time: string | null
-          role: string | null
-          subscription: Json | null
-          user_id: string
-        }
+          id: string;
+          pill_id: string;
+          notification_type: string;
+          recipient_id: string;
+          scheduled_for: string;
+          attempt_number: number;
+          processed_at: string | null;
+          success: boolean | null;
+          error_message: string | null;
+          created_at: string | null;
+        };
         Insert: {
-          email?: string | null
-          reminder_time?: string | null
-          role?: string | null
-          subscription?: Json | null
-          user_id: string
-        }
+          id?: string;
+          pill_id: string;
+          notification_type: string;
+          recipient_id: string;
+          scheduled_for: string;
+          attempt_number?: number;
+          processed_at?: string | null;
+          success?: boolean | null;
+          error_message?: string | null;
+          created_at?: string | null;
+        };
         Update: {
-          email?: string | null
-          reminder_time?: string | null
-          role?: string | null
-          subscription?: Json | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-    }
+          id?: string;
+          pill_id?: string;
+          notification_type?: string;
+          recipient_id?: string;
+          scheduled_for?: string;
+          attempt_number?: number;
+          processed_at?: string | null;
+          success?: boolean | null;
+          error_message?: string | null;
+          created_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'notification_queue_pill_id_fkey';
+            columns: ['pill_id'];
+            isOneToOne: false;
+            referencedRelation: 'pill_tracking';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notification_queue_recipient_id_fkey';
+            columns: ['recipient_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      partnerships: {
+        Row: {
+          id: string;
+          pill_taker_id: string;
+          partner_id: string;
+          status: string;
+          notification_enabled: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          pill_taker_id: string;
+          partner_id: string;
+          status?: string;
+          notification_enabled?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          pill_taker_id?: string;
+          partner_id?: string;
+          status?: string;
+          notification_enabled?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'partnerships_pill_taker_id_fkey';
+            columns: ['pill_taker_id'];
+            isOneToOne: false;
+            referencedRelation: 'pill_takers';
+            referencedColumns: ['user_id'];
+          },
+          {
+            foreignKeyName: 'partnerships_partner_id_fkey';
+            columns: ['partner_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pill_takers: {
+        Row: {
+          user_id: string;
+          reminder_time: string;
+          timezone: string | null;
+          active: boolean | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          user_id: string;
+          reminder_time: string;
+          timezone?: string | null;
+          active?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          user_id?: string;
+          reminder_time?: string;
+          timezone?: string | null;
+          active?: boolean | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pill_takers_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: true;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pill_tracking: {
+        Row: {
+          id: string;
+          user_id: string;
+          scheduled_time: string;
+          status: string;
+          taken_at: string | null;
+          partner_notified_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          scheduled_time: string;
+          status?: string;
+          taken_at?: string | null;
+          partner_notified_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          scheduled_time?: string;
+          status?: string;
+          taken_at?: string | null;
+          partner_notified_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pill_tracking_new_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'pill_takers';
+            referencedColumns: ['user_id'];
+          },
+        ];
+      };
+      users: {
+        Row: {
+          id: string;
+          email: string | null;
+          push_subscription: Json | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id: string;
+          email?: string | null;
+          push_subscription?: Json | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          email?: string | null;
+          push_subscription?: Json | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+    };
     Views: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Functions: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Enums: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
+      [_ in never]: never;
+    };
+  };
+};
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
+export type PublicSchema = Database[Extract<keyof Database, 'public'>];
 
 export type Tables<
   PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+    | keyof (PublicSchema['Tables'] & PublicSchema['Views'])
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    ? keyof (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+        Database[PublicTableNameOrOptions['schema']]['Views'])
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
+  ? (Database[PublicTableNameOrOptions['schema']]['Tables'] &
+      Database[PublicTableNameOrOptions['schema']]['Views'])[TableName] extends {
+      Row: infer R;
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
-        Row: infer R
+  : PublicTableNameOrOptions extends keyof (PublicSchema['Tables'] & PublicSchema['Views'])
+    ? (PublicSchema['Tables'] & PublicSchema['Views'])[PublicTableNameOrOptions] extends {
+        Row: infer R;
       }
       ? R
       : never
-    : never
+    : never;
 
 export type TablesInsert<
   PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
+    | keyof PublicSchema['Tables']
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Insert: infer I;
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Insert: infer I
+  : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
+    ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
+        Insert: infer I;
       }
       ? I
       : never
-    : never
+    : never;
 
 export type TablesUpdate<
   PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
+    | keyof PublicSchema['Tables']
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    ? keyof Database[PublicTableNameOrOptions['schema']]['Tables']
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
+  ? Database[PublicTableNameOrOptions['schema']]['Tables'][TableName] extends {
+      Update: infer U;
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
-        Update: infer U
+  : PublicTableNameOrOptions extends keyof PublicSchema['Tables']
+    ? PublicSchema['Tables'][PublicTableNameOrOptions] extends {
+        Update: infer U;
       }
       ? U
       : never
-    : never
+    : never;
 
 export type Enums<
   PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
+    | keyof PublicSchema['Enums']
     | { schema: keyof Database },
   EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof Database[PublicEnumNameOrOptions['schema']]['Enums']
     : never = never,
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof PublicSchema["CompositeTypes"]
-    | { schema: keyof Database },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
-  }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
-    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? Database[PublicEnumNameOrOptions['schema']]['Enums'][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema['Enums']
+    ? PublicSchema['Enums'][PublicEnumNameOrOptions]
+    : never;

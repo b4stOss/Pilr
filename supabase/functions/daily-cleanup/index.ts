@@ -1,5 +1,6 @@
-// supabase/functions/daily-pills/index.ts
+// supabase/functions/daily-cleanup/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { DateTime } from 'https://esm.sh/luxon@3.4.4';
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
@@ -12,26 +13,16 @@ const logger = {
   },
 };
 
-const INTERVAL_MINUTES = 5;
-
-function roundToNearestInterval(date: Date): Date {
-  const minutes = date.getMinutes();
-  const roundedMinutes = Math.floor(minutes / INTERVAL_MINUTES) * INTERVAL_MINUTES;
-  const newDate = new Date(date);
-  newDate.setMinutes(roundedMinutes, 0, 0);
-  return newDate;
-}
+const DEFAULT_TIMEZONE = 'UTC';
 
 async function markMissedPills(): Promise<void> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const startOfTodayUtc = DateTime.utc().startOf('day');
 
   try {
-    // Update all 'late' or 'pending' pills from yesterday to 'missed'
     const { error } = await supabase
       .from('pill_tracking')
       .update({ status: 'missed' })
-      .lt('scheduled_time', today.toISOString())
+      .lt('scheduled_time', startOfTodayUtc.toISO())
       .in('status', ['pending', 'late']);
 
     if (error) throw error;
@@ -43,39 +34,77 @@ async function markMissedPills(): Promise<void> {
 
 async function createDailyPillEntries(): Promise<void> {
   try {
-    const { data: users, error } = await supabase
-      .from('user_preferences')
-      .select('user_id, reminder_time')
-      .not('reminder_time', 'is', null);
+    const { data: pillTakers, error } = await supabase
+      .from('pill_takers')
+      .select('user_id, reminder_time, timezone, active')
+      .eq('active', true);
 
     if (error) throw error;
-    if (!users?.length) return;
+    if (!pillTakers?.length) return;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    let createdCount = 0;
 
-    const pillEntries = users.map((user) => {
-      const [hours, minutes] = user.reminder_time.split(':').map(Number);
-      const scheduledTime = new Date(today);
-      scheduledTime.setHours(hours, minutes, 0, 0);
+    for (const pillTaker of pillTakers) {
+      if (!pillTaker?.reminder_time) continue;
 
-      // Round the scheduled time to nearest 5 minutes
-      const roundedTime = roundToNearestInterval(scheduledTime);
+      const [hours, minutes] = pillTaker.reminder_time.split(':').map((value: string) => Number.parseInt(value, 10));
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+        logger.error('Invalid reminder time encountered', pillTaker.reminder_time);
+        continue;
+      }
 
-      return {
-        user_id: user.user_id,
-        scheduled_time: roundedTime.toISOString(),
-        next_notification_time: roundedTime.toISOString(),
-        status: 'pending',
-        notification_count: 0,
-      };
-    });
+      const timezone = pillTaker.timezone || DEFAULT_TIMEZONE;
+      const nowInZone = DateTime.now().setZone(timezone);
+      const scheduledLocal = nowInZone.startOf('day').set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
 
-    const { error: insertError } = await supabase.from('pill_tracking').insert(pillEntries);
+      const dayStartUtc = scheduledLocal.startOf('day').toUTC();
+      const dayEndUtc = scheduledLocal.endOf('day').toUTC();
 
-    if (insertError) throw insertError;
+      const { data: existing, error: existingError } = await supabase
+        .from('pill_tracking')
+        .select('id')
+        .eq('user_id', pillTaker.user_id)
+        .gte('scheduled_time', dayStartUtc.toISO())
+        .lt('scheduled_time', dayEndUtc.toISO())
+        .limit(1)
+        .maybeSingle();
 
-    logger.info(`Created ${pillEntries.length} pill entries for ${new Date().toISOString()}`);
+      if (existingError && existingError.code !== 'PGRST116') {
+        throw existingError;
+      }
+
+      if (existing) {
+        continue; // Already scheduled for today
+      }
+
+      const scheduledUtc = scheduledLocal.toUTC();
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('pill_tracking')
+        .insert({
+          user_id: pillTaker.user_id,
+          scheduled_time: scheduledUtc.toISO(),
+          status: 'pending',
+        })
+        .select('id')
+        .single();
+
+      if (insertError) throw insertError;
+
+      const { error: queueError } = await supabase.from('notification_queue').insert({
+        pill_id: inserted.id,
+        notification_type: 'pill_primary',
+        recipient_id: pillTaker.user_id,
+        scheduled_for: scheduledUtc.toISO(),
+        attempt_number: 1,
+      });
+
+      if (queueError) throw queueError;
+
+      createdCount += 1;
+    }
+
+    logger.info(`Created ${createdCount} pill entries for ${DateTime.utc().toISO()}`);
   } catch (error) {
     logger.error('Failed to create daily pill entries', error);
     throw error;

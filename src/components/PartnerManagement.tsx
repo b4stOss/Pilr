@@ -1,11 +1,11 @@
 // src/components/PartnerManagement.tsx
 import { Button, Card, Group, Stack, Text, Collapse, List } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { UserPreference } from '../types';
+import { UserProfile } from '../types';
 
 interface PartnerManagementProps {
-  activePartner: UserPreference | null;
-  availablePartners: UserPreference[];
+  activePartner: UserProfile | null;
+  availablePartners: UserProfile[];
   onAddPartner: (partnerId: string) => Promise<void>;
   onRemovePartner: (partnerId: string) => Promise<void>;
 }
@@ -27,7 +27,7 @@ export function PartnerManagement({ activePartner, availablePartners, onAddPartn
           {activePartner && (
             <Group>
               <Text size="sm">{activePartner.email}</Text>
-              <Button variant="light" color="red" size="xs" onClick={() => onRemovePartner(activePartner.user_id)}>
+              <Button variant="light" color="red" size="xs" onClick={() => onRemovePartner(activePartner.id)}>
                 Remove
               </Button>
             </Group>
@@ -39,10 +39,10 @@ export function PartnerManagement({ activePartner, availablePartners, onAddPartn
               </Text>
               <List spacing="xs" size="sm">
                 {availablePartners.map((partner) => (
-                  <List.Item key={partner.user_id}>
+                  <List.Item key={partner.id}>
                     <Group>
                       <Text size="sm">{partner.email}</Text>
-                      <Button variant="outline" color="green" size="xs" onClick={() => onAddPartner(partner.user_id)}>
+                      <Button variant="outline" color="green" size="xs" onClick={() => onAddPartner(partner.id)}>
                         Add
                       </Button>
                     </Group>

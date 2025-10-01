@@ -77,9 +77,12 @@ pnpm run dev
 
 1. Create a new Supabase project
 2. Set up the following tables:
-   - user_preferences
+   - users
+   - pill_takers
+   - partnerships
    - pill_tracking
-   - user_partners
+   - notification_queue
+   - notification_log
 3. Configure authentication:
    - Enable Google OAuth
    - Add redirect URLs:
