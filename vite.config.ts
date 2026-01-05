@@ -24,12 +24,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // Use generateSW strategy instead of your current custom SW
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.js',
-      registerType: 'autoUpdate',
-      // Your web app manifest
+      injectRegister: null, // Pas d'injection auto, on le fait manuellement
       manifest: {
         name: 'Pilr',
         short_name: 'Pilr',
@@ -50,7 +48,6 @@ export default defineConfig({
           },
         ],
       },
-      // Enable PWA in development
       devOptions: {
         enabled: true,
         type: 'module',
