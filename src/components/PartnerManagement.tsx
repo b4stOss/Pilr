@@ -1,11 +1,11 @@
 // src/components/PartnerManagement.tsx
 import { Button, Card, Group, Stack, Text, Collapse, List } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { UserProfile } from '../types';
+import { UserRow } from '../types';
 
 interface PartnerManagementProps {
-  activePartner: UserProfile | null;
-  availablePartners: UserProfile[];
+  activePartner: UserRow | null;
+  availablePartners: UserRow[];
   onAddPartner: (partnerId: string) => Promise<void>;
   onRemovePartner: (partnerId: string) => Promise<void>;
 }

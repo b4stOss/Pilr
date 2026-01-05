@@ -27,30 +27,41 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.js',
-      injectRegister: null, // Pas d'injection auto, on le fait manuellement
+      registerType: 'autoUpdate',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+      },
       manifest: {
         name: 'Pilr',
         short_name: 'Pilr',
+        description: 'Pill reminder app',
         start_url: '/',
+        scope: '/',
         display: 'standalone',
+        orientation: 'portrait',
         background_color: '#ffffff',
         theme_color: '#000000',
         icons: [
           {
-            src: './192.png',
+            src: '/192.png',
             sizes: '192x192',
             type: 'image/png',
+            purpose: 'any',
           },
           {
-            src: './512.png',
+            src: '/512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any maskable',
           },
         ],
       },
       devOptions: {
         enabled: true,
+        // 'module' requis en dev pour les imports ES (Chrome/Edge uniquement)
+        // En prod, le SW est bundlé en 'classic' → compatible tous navigateurs
         type: 'module',
+        navigateFallback: 'index.html',
       },
     }),
   ],

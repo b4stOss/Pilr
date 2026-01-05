@@ -1,7 +1,0 @@
-{
-  "version": "4",
-  "remote": {
-    "https://deno.land/std@0.177.0/encoding/base64.ts": "7de04c2f8aeeb41453b09b186480be90f2ff357613b988e99fabb91d2eeceba1",
-    "https://deno.land/std@0.177.0/encoding/base64url.ts": "3f1178f6446834457b16bfde8b559c1cd3481727fe384d3385e4a9995dc2d851"
-  }
-}

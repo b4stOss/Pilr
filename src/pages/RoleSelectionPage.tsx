@@ -1,4 +1,4 @@
-// src/pages/RoleSelection.tsx
+// src/pages/RoleSelectionPage.tsx
 import { Box, Button, Center, Title, Text, Stack } from '@mantine/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +11,6 @@ export function RoleSelectionPage() {
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
 
   const setRoleAndNotifications = async (role: AppRole) => {
@@ -22,34 +21,39 @@ export function RoleSelectionPage() {
     setSelectedRole(role);
 
     try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
       if (role === 'pill_taker') {
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-        const nowIso = new Date().toISOString();
-
-        const { error: upsertError } = await supabase.from('pill_takers').upsert({
-          user_id: user.id,
-          reminder_time: '09:00',
-          timezone,
-          active: true,
-          updated_at: nowIso,
-        });
-
-        if (upsertError) throw upsertError;
-      } else {
+        // Update user with pill_taker role and default settings
         const { error: updateError } = await supabase
-          .from('pill_takers')
-          .update({ active: false, updated_at: new Date().toISOString() })
-          .eq('user_id', user.id);
+          .from('users')
+          .update({
+            role: 'pill_taker',
+            reminder_time: '09:00',
+            timezone,
+            active: true,
+          })
+          .eq('id', user.id);
 
-        if (updateError && updateError.code !== 'PGRST116') throw updateError;
+        if (updateError) throw updateError;
+      } else {
+        // Update user with partner role
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            role: 'partner',
+            active: true,
+          })
+          .eq('id', user.id);
+
+        if (updateError) throw updateError;
       }
 
       await refreshProfile();
-
       navigate('/notifications');
-    } catch (error) {
-      console.error('Failed to set role:', error);
-      setError(error instanceof Error ? error.message : 'Failed to save role');
+    } catch (err) {
+      console.error('Failed to set role:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save role');
     } finally {
       setIsProcessing(false);
     }

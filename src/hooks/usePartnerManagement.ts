@@ -1,15 +1,15 @@
 // src/hooks/usePartnerManagement.ts
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Partnership, UserProfile } from '../types';
+import { PartnershipRow, UserRow } from '../types';
 
 interface UsePartnerManagementProps {
   userId: string;
 }
 
 interface UsePartnerManagementReturn {
-  availablePartners: UserProfile[];
-  activePartner: UserProfile | null;
+  availablePartners: UserRow[];
+  activePartner: UserRow | null;
   isLoading: boolean;
   error: string | null;
   addPartner: (partnerId: string) => Promise<void>;
@@ -17,8 +17,8 @@ interface UsePartnerManagementReturn {
 }
 
 export function usePartnerManagement({ userId }: UsePartnerManagementProps): UsePartnerManagementReturn {
-  const [availablePartners, setAvailablePartners] = useState<UserProfile[]>([]);
-  const [activePartner, setActivePartner] = useState<UserProfile | null>(null);
+  const [availablePartners, setAvailablePartners] = useState<UserRow[]>([]);
+  const [activePartner, setActivePartner] = useState<UserRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +37,7 @@ export function usePartnerManagement({ userId }: UsePartnerManagementProps): Use
 
       if (partnershipsError) throw partnershipsError;
 
-      const activeLink = (partnershipRows as Partnership[] | null)?.find((p) => p.status === 'active') ?? null;
+      const activeLink = (partnershipRows as PartnershipRow[] | null)?.find((p) => p.status === 'active') ?? null;
 
       // Fetch all users except the current pill taker
       const { data: usersData, error: usersError } = await supabase
@@ -47,7 +47,7 @@ export function usePartnerManagement({ userId }: UsePartnerManagementProps): Use
 
       if (usersError) throw usersError;
 
-      const typedUsers = (usersData as UserProfile[] | null) ?? [];
+      const typedUsers = (usersData as UserRow[] | null) ?? [];
 
       if (activeLink) {
         const partnerProfile = typedUsers.find((user) => user.id === activeLink.partner_id) || null;
@@ -74,21 +74,17 @@ export function usePartnerManagement({ userId }: UsePartnerManagementProps): Use
     try {
       setError(null);
 
-      const nowIso = new Date().toISOString();
-
+      // Delete any existing partnership for this pill_taker (1-1 constraint)
       await supabase
         .from('partnerships')
-        .update({ status: 'inactive', updated_at: nowIso })
-        .eq('pill_taker_id', userId)
-        .eq('status', 'active');
+        .delete()
+        .eq('pill_taker_id', userId);
 
+      // Create new active partnership
       const { error: insertError } = await supabase.from('partnerships').insert({
         pill_taker_id: userId,
         partner_id: partnerId,
         status: 'active',
-        notification_enabled: true,
-        created_at: nowIso,
-        updated_at: nowIso,
       });
 
       if (insertError) throw insertError;
@@ -104,18 +100,12 @@ export function usePartnerManagement({ userId }: UsePartnerManagementProps): Use
     try {
       setError(null);
 
-      const nowIso = new Date().toISOString();
-
+      // Delete the partnership
       const { error: deleteError } = await supabase
         .from('partnerships')
-        .update({
-          status: 'inactive',
-          notification_enabled: false,
-          updated_at: nowIso,
-        })
+        .delete()
         .eq('pill_taker_id', userId)
-        .eq('partner_id', partnerId)
-        .eq('status', 'active');
+        .eq('partner_id', partnerId);
 
       if (deleteError) throw deleteError;
 

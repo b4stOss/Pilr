@@ -9,7 +9,8 @@ export function NotificationPermissionPage() {
   const { user, activeRole, hasPushSubscription, refreshProfile } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const { error, subscribe } = useNotifications({
+  const [error, setError] = useState<string | null>(null);
+  const { subscribe } = useNotifications({
     userId: user?.id || '',
     isInitiallySubscribed: hasPushSubscription,
   });
@@ -24,15 +25,19 @@ export function NotificationPermissionPage() {
   const handleEnableNotifications = async () => {
     try {
       setIsProcessing(true);
+      setError(null);
       const success = await subscribe();
 
       if (success) {
         // Navigate to appropriate page based on role
         await refreshProfile();
         navigate(activeRole === 'partner' ? '/partner' : '/home');
+      } else {
+        setError('Failed to enable notifications. Please try again.');
       }
     } catch (err) {
       console.error('Failed to enable notifications:', err);
+      setError(err instanceof Error ? err.message : 'Failed to enable notifications');
     } finally {
       setIsProcessing(false);
     }

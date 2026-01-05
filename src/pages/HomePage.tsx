@@ -19,13 +19,13 @@ function isValidTimeFormat(time: string): boolean {
     return false;
   }
 
-  // Then check if minutes are divisible by 5
+  // Check if minutes are divisible by 15 (aligned with cron schedule)
   const minutes = parseInt(time.split(':')[1]);
-  return minutes % 5 === 0;
+  return minutes % 15 === 0;
 }
 
 export function HomePage() {
-  const { user, pillTakerProfile, hasPushSubscription, refreshProfile } = useAuth();
+  const { user, profile, hasPushSubscription, refreshProfile } = useAuth();
   const [reminderTime, setReminderTime] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [opened, { toggle }] = useDisclosure(false);
@@ -34,7 +34,6 @@ export function HomePage() {
   const {
     isSubscribed,
     subscribe,
-    error: notificationError,
   } = useNotifications({
     userId: user?.id || '',
     isInitiallySubscribed: hasPushSubscription,
@@ -85,11 +84,11 @@ export function HomePage() {
 
   // Sync reminder time from profile
   useEffect(() => {
-    if (pillTakerProfile?.reminder_time) {
-      const [hours = '00', minutes = '00'] = pillTakerProfile.reminder_time.split(':');
+    if (profile?.reminder_time) {
+      const [hours = '00', minutes = '00'] = profile.reminder_time.split(':');
       setReminderTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
     }
-  }, [pillTakerProfile]);
+  }, [profile]);
 
   const handleTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = event.target.value;
@@ -101,9 +100,9 @@ export function HomePage() {
       return;
     }
 
-    // Show error if time isn't in 5-minute intervals
+    // Show error if time isn't in 15-minute intervals
     if (!isValidTimeFormat(newTime)) {
-      setTimeError('Time should be in 5-minute intervals (e.g., 09:00, 09:05, 09:10)');
+      setTimeError('Time should be in 15-minute intervals (e.g., 09:00, 09:15, 09:30, 09:45)');
     } else {
       setTimeError(null);
     }
@@ -123,17 +122,14 @@ export function HomePage() {
       }
 
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      const nowIso = new Date().toISOString();
 
       const { error: updateError } = await supabase
-        .from('pill_takers')
-        .upsert({
-          user_id: user.id,
+        .from('users')
+        .update({
           reminder_time: reminderTime,
           timezone,
-          active: true,
-          updated_at: nowIso,
-        });
+        })
+        .eq('id', user.id);
 
       if (updateError) throw updateError;
 
@@ -150,7 +146,7 @@ export function HomePage() {
     <Container style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Header />
       <Stack mt="xl" style={{ flex: 1 }}>
-        {(notificationError || pillError || partnerError) && <Text size="sm">{notificationError || pillError || partnerError}</Text>}
+        {(pillError || partnerError) && <Text size="sm" c="red">{pillError || partnerError}</Text>}
 
         <PartnerManagement
           activePartner={activePartner}
@@ -187,7 +183,7 @@ export function HomePage() {
 
           <Collapse in={opened}>
             <Stack align="center">
-              <TimeInput value={reminderTime} step={300} onChange={handleTimeChange} withSeconds={false} error={timeError} />
+              <TimeInput value={reminderTime} step={900} onChange={handleTimeChange} withSeconds={false} error={timeError} />
               {/* <NativeSelect
                 value={reminderTime}
                 size="md"

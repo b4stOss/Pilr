@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "release": "standard-version"
+    "release": "standard-version",
+    "db:types": "npx supabase gen types typescript --project-id fxsmvpqbebukhqraxsja > src/types/database.types.ts",
+    "db:push": "npx supabase db push",
+    "db:reset": "npx supabase db reset"
   },
   "dependencies": {
     "@mantine/core": "^7.16.1",
@@ -40,6 +43,10 @@
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.18.2",
     "vite": "^6.0.5",
-    "vite-plugin-pwa": "^0.21.1"
+    "vite-plugin-pwa": "^0.21.1",
+    "workbox-core": "^7.4.0",
+    "workbox-precaching": "^7.4.0",
+    "workbox-routing": "^7.4.0",
+    "workbox-window": "^7.4.0"
   }
 }

@@ -1,8 +1,8 @@
 import { Flex, Text, Button, Badge, Stack, Group } from '@mantine/core';
-import { PillTracking, PillStatus } from '../types';
+import { PillTrackingRow, PillStatus } from '../types';
 
 interface PillListProps {
-  pills: PillTracking[];
+  pills: PillTrackingRow[];
   onStatusChange: (pillId: string, status: PillStatus) => Promise<void>;
 }
 
@@ -10,13 +10,15 @@ export const StatusBadge = ({ status }: { status: PillStatus }) => {
   const colorMap: Record<PillStatus, string> = {
     pending: 'yellow',
     taken: 'green',
-    late: 'orange',
+    late_taken: 'orange',
     missed: 'red',
   };
 
+  const displayName = status === 'late_taken' ? 'Late' : status.charAt(0).toUpperCase() + status.slice(1);
+
   return (
     <Badge color={colorMap[status]} variant="light">
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {displayName}
     </Badge>
   );
 };
@@ -46,17 +48,17 @@ export function PillList({ pills, onStatusChange }: PillListProps) {
             }}
           >
             <Group>
-              <StatusBadge status={pill.status} />
+              <StatusBadge status={pill.status ?? 'pending'} />
               <Text fw={700}>{formatTime(pill.scheduled_time)}</Text>
             </Group>
 
-            {(pill.status === 'pending' || pill.status === 'late') && (
+            {(pill.status === 'pending' || pill.status === 'late_taken') && (
               <Button variant="light" color="green" size="sm" onClick={() => onStatusChange(pill.id, 'taken')}>
                 Mark Taken
               </Button>
             )}
 
-            {pill.status !== 'pending' && pill.status !== 'late' && pill.taken_at && (
+            {pill.status !== 'pending' && pill.status !== 'late_taken' && pill.taken_at && (
               <Text size="sm">Taken at {formatTime(pill.taken_at)}</Text>
             )}
           </Flex>

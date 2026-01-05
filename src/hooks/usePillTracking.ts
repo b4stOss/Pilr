@@ -1,7 +1,7 @@
 // src/hooks/usePillTracking.ts
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { PillTracking, PillStatus } from '../types';
+import { PillTrackingRow, PillStatus } from '../types';
 
 interface UsePillTrackingProps {
   userId: string;
@@ -9,8 +9,8 @@ interface UsePillTrackingProps {
 }
 
 interface UsePillTrackingReturn {
-  todayPills: PillTracking[];
-  historyPills: PillTracking[];
+  todayPills: PillTrackingRow[];
+  historyPills: PillTrackingRow[];
   isLoading: boolean;
   error: string | null;
   markPillStatus: (pillId: string, status: PillStatus) => Promise<void>;
@@ -18,8 +18,8 @@ interface UsePillTrackingReturn {
 }
 
 export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProps): UsePillTrackingReturn {
-  const [todayPills, setTodayPills] = useState<PillTracking[]>([]);
-  const [historyPills, setHistoryPills] = useState<PillTracking[]>([]);
+  const [todayPills, setTodayPills] = useState<PillTrackingRow[]>([]);
+  const [historyPills, setHistoryPills] = useState<PillTrackingRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +51,7 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
 
       if (fetchError) throw fetchError;
 
-      const typedData = data as PillTracking[];
+      const typedData = data as PillTrackingRow[];
 
       // Split into today and history
       setTodayPills(
@@ -82,7 +82,7 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
     try {
       setError(null);
       const nowIso = new Date().toISOString();
-      const updates: Partial<PillTracking> = {
+      const updates: Partial<PillTrackingRow> = {
         status,
         updated_at: nowIso,
       };
@@ -91,26 +91,16 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
         updates.taken_at = nowIso;
       }
 
-      const { error: updateError } = await supabase.from('pill_tracking').update(updates).eq('id', pillId);
+      const { error: updateError } = await supabase
+        .from('pill_tracking')
+        .update(updates)
+        .eq('id', pillId);
 
       if (updateError) throw updateError;
 
-      if (status === 'taken') {
-        const { error: queueError } = await supabase
-          .from('notification_queue')
-          .update({
-            processed_at: nowIso,
-            success: true,
-            error_message: 'Cancelled after pill marked as taken',
-          })
-          .eq('pill_id', pillId)
-          .is('processed_at', null);
-
-        if (queueError) throw queueError;
-      }
-
       // Update local state for both today and history
-      const updatePills = (pills: PillTracking[]) => pills.map((pill) => (pill.id === pillId ? { ...pill, ...updates } : pill));
+      const updatePills = (pills: PillTrackingRow[]) =>
+        pills.map((pill) => (pill.id === pillId ? { ...pill, ...updates } : pill));
 
       setTodayPills(updatePills);
       setHistoryPills(updatePills);

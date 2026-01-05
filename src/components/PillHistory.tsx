@@ -1,8 +1,8 @@
 import { Stack, Flex, Text } from '@mantine/core';
-import { PillTracking } from '../types';
+import { PillTrackingRow } from '../types';
 import { StatusBadge } from './PillList';
 
-export function PillHistory({ pills }: { pills: PillTracking[] }) {
+export function PillHistory({ pills }: { pills: PillTrackingRow[] }) {
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString(undefined, {
       weekday: 'short',
@@ -28,7 +28,7 @@ export function PillHistory({ pills }: { pills: PillTracking[] }) {
       acc[date].push(pill);
       return acc;
     },
-    {} as Record<string, PillTracking[]>,
+    {} as Record<string, PillTrackingRow[]>,
   );
 
   return (
@@ -48,7 +48,7 @@ export function PillHistory({ pills }: { pills: PillTracking[] }) {
                 backgroundColor: 'rgba(0, 0, 0, 0.02)',
               }}
             >
-              <StatusBadge status={pill.status} />
+              <StatusBadge status={pill.status ?? 'pending'} />
               <Text size="sm">Scheduled: {formatTime(pill.scheduled_time)}</Text>
               {pill.taken_at && <Text size="sm">Taken: {formatTime(pill.taken_at)}</Text>}
             </Flex>
