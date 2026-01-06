@@ -1,5 +1,6 @@
 // src/hooks/usePillTracking.ts
 import { useState, useEffect, useCallback } from 'react';
+import { DateTime } from 'luxon';
 import { supabase } from '../lib/supabase';
 import { PillTrackingRow, PillStatus } from '../types';
 
@@ -30,23 +31,18 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
       setIsLoading(true);
       setError(null);
 
-      // Set up date ranges
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-
-      const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999);
-
-      const historyStart = new Date();
-      historyStart.setDate(historyStart.getDate() - daysToFetch);
-      historyStart.setHours(0, 0, 0, 0);
+      // Set up date ranges using luxon for consistent timezone handling
+      const now = DateTime.now();
+      const todayStart = now.startOf('day');
+      const todayEnd = now.endOf('day');
+      const historyStart = now.minus({ days: daysToFetch }).startOf('day');
 
       // Fetch all pills within range
       const { data, error: fetchError } = await supabase
         .from('pill_tracking')
         .select('*')
         .eq('user_id', userId)
-        .gte('scheduled_time', historyStart.toISOString())
+        .gte('scheduled_time', historyStart.toUTC().toISO())
         .order('scheduled_time', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -56,14 +52,14 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
       // Split into today and history
       setTodayPills(
         typedData.filter((pill) => {
-          const pillDate = new Date(pill.scheduled_time);
+          const pillDate = DateTime.fromISO(pill.scheduled_time);
           return pillDate >= todayStart && pillDate <= todayEnd;
         }),
       );
 
       setHistoryPills(
         typedData.filter((pill) => {
-          const pillDate = new Date(pill.scheduled_time);
+          const pillDate = DateTime.fromISO(pill.scheduled_time);
           return pillDate < todayStart && pillDate >= historyStart;
         }),
       );
@@ -81,7 +77,7 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
   const markPillStatus = async (pillId: string, status: PillStatus) => {
     try {
       setError(null);
-      const nowIso = new Date().toISOString();
+      const nowIso = DateTime.now().toUTC().toISO();
       const updates: Partial<PillTrackingRow> = {
         status,
         updated_at: nowIso,

@@ -1,10 +1,11 @@
 import { Stack, Flex, Text } from '@mantine/core';
+import { DateTime } from 'luxon';
 import { PillTrackingRow } from '../types';
 import { StatusBadge } from './PillList';
 
 export function PillHistory({ pills }: { pills: PillTrackingRow[] }) {
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString(undefined, {
+    return DateTime.fromISO(dateStr).toLocaleString({
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -12,10 +13,7 @@ export function PillHistory({ pills }: { pills: PillTrackingRow[] }) {
   };
 
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return DateTime.fromISO(dateStr).toFormat('HH:mm');
   };
 
   // Group pills by date

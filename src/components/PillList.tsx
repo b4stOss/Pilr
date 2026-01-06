@@ -1,4 +1,5 @@
 import { Flex, Text, Button, Badge, Stack, Group } from '@mantine/core';
+import { DateTime } from 'luxon';
 import { PillTrackingRow, PillStatus } from '../types';
 
 interface PillListProps {
@@ -25,10 +26,7 @@ export const StatusBadge = ({ status }: { status: PillStatus }) => {
 
 export function PillList({ pills, onStatusChange }: PillListProps) {
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return DateTime.fromISO(dateStr).toFormat('HH:mm');
   };
 
   return (

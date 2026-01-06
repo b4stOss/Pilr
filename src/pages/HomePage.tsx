@@ -1,8 +1,9 @@
 // src/pages/HomePage.tsx
 import { Container, Flex, Button, Title, Collapse, Text, Stack, Tabs } from '@mantine/core';
 import { useEffect, useState } from 'react';
-import { TimeInput } from '@mantine/dates';
+import { TimePicker } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
+import { DateTime } from 'luxon';
 import Header from '../components/HeaderComponent';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
@@ -90,18 +91,17 @@ export function HomePage() {
     }
   }, [profile]);
 
-  const handleTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = event.target.value;
-    setReminderTime(newTime);
+  const handleTimeChange = (value: string) => {
+    setReminderTime(value);
 
-    // Clear error if input is empty (allowing user to type)
-    if (!newTime) {
+    // Clear error if input is empty
+    if (!value) {
       setTimeError(null);
       return;
     }
 
     // Show error if time isn't in 15-minute intervals
-    if (!isValidTimeFormat(newTime)) {
+    if (!isValidTimeFormat(value)) {
       setTimeError('Time should be in 15-minute intervals (e.g., 09:00, 09:15, 09:30, 09:45)');
     } else {
       setTimeError(null);
@@ -132,6 +132,24 @@ export function HomePage() {
         .eq('id', user.id);
 
       if (updateError) throw updateError;
+
+      // Update today's pending pill with the new scheduled time
+      const [hours, minutes] = reminderTime.split(':').map(Number);
+      const now = DateTime.now().setZone(timezone);
+      const scheduledTime = now.startOf('day').set({ hour: hours, minute: minutes });
+
+      if (!scheduledTime.isValid) {
+        throw new Error(`Invalid scheduled time: ${scheduledTime.invalidReason}`);
+      }
+
+      // Update today's pending pill if it exists
+      await supabase
+        .from('pill_tracking')
+        .update({ scheduled_time: scheduledTime.toUTC().toISO() })
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .gte('scheduled_time', now.startOf('day').toUTC().toISO())
+        .lte('scheduled_time', now.endOf('day').toUTC().toISO());
 
       await Promise.all([refreshProfile(), refreshPills()]);
       toggle();
@@ -183,21 +201,13 @@ export function HomePage() {
 
           <Collapse in={opened}>
             <Stack align="center">
-              <TimeInput value={reminderTime} step={900} onChange={handleTimeChange} withSeconds={false} error={timeError} />
-              {/* <NativeSelect
+              <TimePicker
                 value={reminderTime}
-                size="md"
-                color="black"
-                onChange={(event) => setReminderTime(event.currentTarget.value || '')}
-                data={timeOptions}
-              /> */}
-              {/* <Select
-                value={reminderTime}
-                onChange={(value) => setReminderTime(value || '')}
-                data={timeOptions}
-                searchable
-                placeholder="Select time"
-              /> */}
+                onChange={handleTimeChange}
+                format="24h"
+                minutesStep={15}
+                error={timeError}
+              />
               <Button onClick={handleSaveReminderTime} color="black" loading={isSaving} disabled={!reminderTime || !!timeError}>
                 Save
               </Button>
