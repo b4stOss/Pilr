@@ -171,6 +171,7 @@ export function HomePage() {
         {activeTab === 'today' && (
           <TodayView
             pill={todayPills[0] || null}
+            reminderTime={profile?.reminder_time ?? null}
             streak={streak}
             onMarkTaken={(pillId) => markPillStatus(pillId, 'taken')}
             onEditReminder={toggle}

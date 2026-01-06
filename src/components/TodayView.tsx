@@ -5,12 +5,13 @@ import { PillTrackingRow } from '../types';
 
 interface TodayViewProps {
   pill: PillTrackingRow | null;
+  reminderTime: string | null;
   streak: number;
   onMarkTaken: (pillId: string) => Promise<void>;
   onEditReminder: () => void;
 }
 
-export function TodayView({ pill, streak, onMarkTaken, onEditReminder }: TodayViewProps) {
+export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditReminder }: TodayViewProps) {
   const today = DateTime.now();
   const dateString = today.toFormat('EEEE, MMM d');
 
@@ -18,7 +19,9 @@ export function TodayView({ pill, streak, onMarkTaken, onEditReminder }: TodayVi
   const isTaken = status === 'taken' || status === 'late_taken';
   const canMarkTaken = !isTaken;
 
-  const scheduledTime = pill ? DateTime.fromISO(pill.scheduled_time).toFormat('HH:mm') : '--:--';
+  const displayTime = reminderTime
+    ? DateTime.fromSQL(reminderTime).toFormat('HH:mm')
+    : '--:--';
   const takenTime = pill?.taken_at ? DateTime.fromISO(pill.taken_at).toFormat('HH:mm') : null;
 
   const handleMarkTaken = () => {
@@ -108,7 +111,7 @@ export function TodayView({ pill, streak, onMarkTaken, onEditReminder }: TodayVi
               Scheduled
             </Text>
             <Text size="xl" fw={700}>
-              {scheduledTime}
+              {displayTime}
             </Text>
           </Stack>
 

@@ -26,6 +26,7 @@ dist-ssr
 
 .env
 .env.local
+supabase/.env
 pnpm-lock.yaml
 
 src/assets/icons
