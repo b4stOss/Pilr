@@ -9,7 +9,6 @@ import * as webpush from "@negrel/webpush";
 
 const ESCALATION_MINUTES = [0, 15, 30, 60]; // Reminder intervals after scheduled_time
 const PARTNER_ALERT_MINUTES = 90; // Alert partner after this delay
-const MARK_MISSED_MINUTES = 120; // Mark pill as missed after this delay
 
 // ============================================================================
 // TYPES
@@ -319,14 +318,14 @@ async function sendPartnerAlerts(appServer: webpush.ApplicationServer): Promise<
 // ============================================================================
 
 async function markMissedPills(): Promise<number> {
-  const now = DateTime.utc();
-  const missedThreshold = now.minus({ minutes: MARK_MISSED_MINUTES }).toISO();
+  // Mark pills as missed only if they're from a previous day (end of day logic)
+  const todayStart = DateTime.utc().startOf("day").toISO();
 
   const { data, error } = await supabase
     .from("pill_tracking")
     .update({ status: "missed" })
     .in("status", ["pending", "late_taken"])
-    .lte("scheduled_time", missedThreshold)
+    .lt("scheduled_time", todayStart)
     .select("id");
 
   if (error) throw error;

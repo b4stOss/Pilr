@@ -12,15 +12,43 @@ interface UsePillTrackingProps {
 interface UsePillTrackingReturn {
   todayPills: PillTrackingRow[];
   historyPills: PillTrackingRow[];
+  allPills: PillTrackingRow[];
+  pillsByDate: Map<string, PillTrackingRow[]>;
+  streak: number;
   isLoading: boolean;
   error: string | null;
   markPillStatus: (pillId: string, status: PillStatus) => Promise<void>;
   refreshPills: () => Promise<void>;
 }
 
-export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProps): UsePillTrackingReturn {
+// Calculate streak: consecutive days with taken/late_taken status going back from yesterday
+function calculateStreak(pillsByDate: Map<string, PillTrackingRow[]>): number {
+  let streak = 0;
+  let currentDate = DateTime.now().startOf('day');
+
+  while (true) {
+    const dateKey = currentDate.toFormat('yyyy-MM-dd');
+    const pills = pillsByDate.get(dateKey);
+
+    if (!pills || pills.length === 0) break;
+
+    // Check if all pills for this day were taken
+    const allTaken = pills.every((p) => p.status === 'taken' || p.status === 'late_taken');
+    if (!allTaken) break;
+
+    streak++;
+    currentDate = currentDate.minus({ days: 1 });
+  }
+
+  return streak;
+}
+
+export function usePillTracking({ userId, daysToFetch = 60 }: UsePillTrackingProps): UsePillTrackingReturn {
   const [todayPills, setTodayPills] = useState<PillTrackingRow[]>([]);
   const [historyPills, setHistoryPills] = useState<PillTrackingRow[]>([]);
+  const [allPills, setAllPills] = useState<PillTrackingRow[]>([]);
+  const [pillsByDate, setPillsByDate] = useState<Map<string, PillTrackingRow[]>>(new Map());
+  const [streak, setStreak] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +76,23 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
       if (fetchError) throw fetchError;
 
       const typedData = data as PillTrackingRow[];
+
+      // Store all pills
+      setAllPills(typedData);
+
+      // Build pillsByDate map for calendar view
+      const pillsMap = new Map<string, PillTrackingRow[]>();
+      typedData.forEach((pill) => {
+        const dateKey = DateTime.fromISO(pill.scheduled_time).toFormat('yyyy-MM-dd');
+        if (!pillsMap.has(dateKey)) {
+          pillsMap.set(dateKey, []);
+        }
+        pillsMap.get(dateKey)!.push(pill);
+      });
+      setPillsByDate(pillsMap);
+
+      // Calculate streak
+      setStreak(calculateStreak(pillsMap));
 
       // Split into today and history
       setTodayPills(
@@ -78,12 +123,23 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
     try {
       setError(null);
       const nowIso = DateTime.now().toUTC().toISO();
+
+      // Find current pill to check its status
+      const currentPill = allPills.find((p) => p.id === pillId);
+      const currentStatus = currentPill?.status;
+
+      // If marking as taken but was missed/late_taken, use late_taken instead
+      let finalStatus = status;
+      if (status === 'taken' && (currentStatus === 'missed' || currentStatus === 'late_taken')) {
+        finalStatus = 'late_taken';
+      }
+
       const updates: Partial<PillTrackingRow> = {
-        status,
+        status: finalStatus,
         updated_at: nowIso,
       };
 
-      if (status === 'taken') {
+      if (finalStatus === 'taken' || finalStatus === 'late_taken') {
         updates.taken_at = nowIso;
       }
 
@@ -94,12 +150,25 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
 
       if (updateError) throw updateError;
 
-      // Update local state for both today and history
+      // Update local state for today, history, all pills, and pillsByDate
       const updatePills = (pills: PillTrackingRow[]) =>
         pills.map((pill) => (pill.id === pillId ? { ...pill, ...updates } : pill));
 
       setTodayPills(updatePills);
       setHistoryPills(updatePills);
+      setAllPills(updatePills);
+
+      // Update pillsByDate map
+      setPillsByDate((prevMap) => {
+        const newMap = new Map(prevMap);
+        for (const [dateKey, pills] of newMap) {
+          const updatedPills = pills.map((pill) =>
+            pill.id === pillId ? { ...pill, ...updates } : pill
+          );
+          newMap.set(dateKey, updatedPills);
+        }
+        return newMap;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update pill status');
     }
@@ -108,6 +177,9 @@ export function usePillTracking({ userId, daysToFetch = 7 }: UsePillTrackingProp
   return {
     todayPills,
     historyPills,
+    allPills,
+    pillsByDate,
+    streak,
     isLoading,
     error,
     markPillStatus,

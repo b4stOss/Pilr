@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Center, Container, Text, Title, Loader, Stack, Tabs } from '@mantine/core';
+import { Center, Container, Text, Title, Loader, Stack } from '@mantine/core';
 import { usePillTracking } from '../hooks/usePillTracking';
 import { PillList } from '../components/PillList';
-import { PillHistory } from '../components/PillHistory';
+import { CalendarHistory } from '../components/CalendarHistory';
+import { ComplianceStats } from '../components/ComplianceStats';
+import { BottomNav } from '../components/BottomNav';
 import Header from '../components/HeaderComponent';
 
 export function PartnerPage() {
@@ -12,14 +14,15 @@ export function PartnerPage() {
   const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'today' | 'history' | 'partner'>('today');
 
   const {
     todayPills,
-    historyPills,
+    allPills,
+    pillsByDate,
     error: pillError,
   } = usePillTracking({
     userId: linkedUserId || '',
-    daysToFetch: 7,
   });
 
   useEffect(() => {
@@ -104,35 +107,53 @@ export function PartnerPage() {
   }
 
   return (
-    <Container style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Container
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        paddingBottom: 100,
+      }}
+    >
       <Header />
-      <Stack mt="xl">
-        {pillError && <Text size="sm">{pillError}</Text>}
 
-        <Tabs defaultValue="today" color="black">
-          <Tabs.List grow>
-            <Tabs.Tab value="today">Today</Tabs.Tab>
-            <Tabs.Tab value="history">History</Tabs.Tab>
-          </Tabs.List>
+      <Stack mt="xl" style={{ flex: 1 }}>
+        {pillError && (
+          <Text size="sm" c="red">
+            {pillError}
+          </Text>
+        )}
 
-          <Tabs.Panel value="today" pt="md">
-            <Stack>
-              <Title order={2}>Today's Pills</Title>
-              <PillList
-                pills={todayPills}
-                onStatusChange={async () => {}} // Partners can't change status
-              />
-            </Stack>
-          </Tabs.Panel>
+        {/* Today Tab */}
+        {activeTab === 'today' && (
+          <Stack>
+            <Title order={2}>Today's Pills</Title>
+            <PillList
+              pills={todayPills}
+              onStatusChange={async () => {}} // Partners can't change status
+            />
+          </Stack>
+        )}
 
-          <Tabs.Panel value="history" pt="md">
-            <Stack>
-              <Title order={2}>Past 7 Days</Title>
-              <PillHistory pills={historyPills} />
-            </Stack>
-          </Tabs.Panel>
-        </Tabs>
+        {/* History Tab */}
+        {activeTab === 'history' && (
+          <Stack gap="lg">
+            <Title order={2}>History</Title>
+            <ComplianceStats pills={allPills} />
+            <CalendarHistory pillsByDate={pillsByDate} />
+          </Stack>
+        )}
+
+        {/* Partner Tab */}
+        {activeTab === 'partner' && (
+          <Stack>
+            <Title order={2}>Partnership</Title>
+            <Text c="dimmed">You are currently monitoring a pill taker's compliance.</Text>
+          </Stack>
+        )}
       </Stack>
+
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </Container>
   );
 }

@@ -1,4 +1,4 @@
-import { Container } from "@mantine/core";
+import { Container } from '@mantine/core';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -6,8 +6,14 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   return (
-    <Container style={{ height: "100vh" }}>
-        {children}
+    <Container
+      size="xs"
+      style={{
+        height: '100vh',
+        maxWidth: 440,
+      }}
+    >
+      {children}
     </Container>
-);
+  );
 }

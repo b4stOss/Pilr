@@ -1,5 +1,5 @@
 // src/pages/HomePage.tsx
-import { Container, Flex, Button, Title, Collapse, Text, Stack, Tabs } from '@mantine/core';
+import { Container, Button, Title, Text, Stack, Modal } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { TimePicker } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
@@ -9,9 +9,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { usePillTracking } from '../hooks/usePillTracking';
 import { usePartnerManagement } from '../hooks/usePartnerManagement';
-import { PillList } from '../components/PillList';
-import { PillHistory } from '../components/PillHistory';
+import { TodayView } from '../components/TodayView';
+import { CalendarHistory } from '../components/CalendarHistory';
+import { ComplianceStats } from '../components/ComplianceStats';
 import { PartnerManagement } from '../components/PartnerManagement';
+import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../lib/supabase';
 
 function isValidTimeFormat(time: string): boolean {
@@ -27,28 +29,27 @@ function isValidTimeFormat(time: string): boolean {
 
 export function HomePage() {
   const { user, profile, hasPushSubscription, refreshProfile } = useAuth();
+  const [activeTab, setActiveTab] = useState<'today' | 'history' | 'partner'>('today');
   const [reminderTime, setReminderTime] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [opened, { toggle }] = useDisclosure(false);
   const [timeError, setTimeError] = useState<string | null>(null);
 
-  const {
-    isSubscribed,
-    subscribe,
-  } = useNotifications({
+  const { isSubscribed, subscribe } = useNotifications({
     userId: user?.id || '',
     isInitiallySubscribed: hasPushSubscription,
   });
 
   const {
     todayPills,
-    historyPills,
+    allPills,
+    pillsByDate,
+    streak,
     error: pillError,
     markPillStatus,
     refreshPills,
   } = usePillTracking({
     userId: user?.id || '',
-    daysToFetch: 7,
   });
 
   const {
@@ -70,18 +71,6 @@ export function HomePage() {
     await removePartner(partnerId);
     await refreshProfile();
   };
-
-  // Generate time options every 30 minutes
-  // const timeOptions = Array.from({ length: 48 }, (_, i) => {
-  //   const hour = Math.floor(i / 2)
-  //     .toString()
-  //     .padStart(2, '0');
-  //   const minute = i % 2 === 0 ? '00' : '30';
-  //   return {
-  //     value: `${hour}:${minute}`,
-  //     label: `${hour}:${minute}`,
-  //   };
-  // });
 
   // Sync reminder time from profile
   useEffect(() => {
@@ -161,60 +150,78 @@ export function HomePage() {
   };
 
   return (
-    <Container style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Container
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        paddingBottom: 100,
+      }}
+    >
       <Header />
+
       <Stack mt="xl" style={{ flex: 1 }}>
-        {(pillError || partnerError) && <Text size="sm" c="red">{pillError || partnerError}</Text>}
+        {(pillError || partnerError) && (
+          <Text size="sm" c="red">
+            {pillError || partnerError}
+          </Text>
+        )}
 
-        <PartnerManagement
-          activePartner={activePartner}
-          availablePartners={availablePartners}
-          onAddPartner={handleAddPartner}
-          onRemovePartner={handleRemovePartner}
-        />
+        {/* Today Tab */}
+        {activeTab === 'today' && (
+          <TodayView
+            pill={todayPills[0] || null}
+            streak={streak}
+            onMarkTaken={(pillId) => markPillStatus(pillId, 'taken')}
+            onEditReminder={toggle}
+          />
+        )}
 
-        <Tabs defaultValue="today" color="black">
-          <Tabs.List grow>
-            <Tabs.Tab value="today">Today</Tabs.Tab>
-            <Tabs.Tab value="history">History</Tabs.Tab>
-          </Tabs.List>
+        {/* Edit Reminder Modal */}
+        <Modal opened={opened} onClose={toggle} title="Edit Reminder Time" centered radius="lg">
+          <Stack align="center" gap="lg">
+            <TimePicker
+              value={reminderTime}
+              onChange={handleTimeChange}
+              format="24h"
+              minutesStep={15}
+              error={timeError}
+            />
+            <Button
+              onClick={handleSaveReminderTime}
+              color="black"
+              loading={isSaving}
+              disabled={!reminderTime || !!timeError}
+              fullWidth
+            >
+              Save
+            </Button>
+          </Stack>
+        </Modal>
 
-          <Tabs.Panel value="today" pt="md">
-            <Stack>
-              <Title order={2}>Today's Pills</Title>
-              <PillList pills={todayPills} onStatusChange={markPillStatus} />
-            </Stack>
-          </Tabs.Panel>
+        {/* History Tab */}
+        {activeTab === 'history' && (
+          <Stack gap="lg">
+            <ComplianceStats pills={allPills} />
+            <CalendarHistory pillsByDate={pillsByDate} />
+          </Stack>
+        )}
 
-          <Tabs.Panel value="history" pt="md">
-            <Stack>
-              <Title order={2}>Past 7 Days</Title>
-              <PillHistory pills={historyPills} />
-            </Stack>
-          </Tabs.Panel>
-        </Tabs>
-
-        <Flex justify="center" direction="column" gap="md" mt="auto" pb="md">
-          <Button color="black" onClick={toggle} variant="outline" radius="xl">
-            Edit reminder
-          </Button>
-
-          <Collapse in={opened}>
-            <Stack align="center">
-              <TimePicker
-                value={reminderTime}
-                onChange={handleTimeChange}
-                format="24h"
-                minutesStep={15}
-                error={timeError}
-              />
-              <Button onClick={handleSaveReminderTime} color="black" loading={isSaving} disabled={!reminderTime || !!timeError}>
-                Save
-              </Button>
-            </Stack>
-          </Collapse>
-        </Flex>
+        {/* Partner Tab */}
+        {activeTab === 'partner' && (
+          <Stack>
+            <Title order={2}>Partner</Title>
+            <PartnerManagement
+              activePartner={activePartner}
+              availablePartners={availablePartners}
+              onAddPartner={handleAddPartner}
+              onRemovePartner={handleRemovePartner}
+            />
+          </Stack>
+        )}
       </Stack>
+
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </Container>
   );
 }
