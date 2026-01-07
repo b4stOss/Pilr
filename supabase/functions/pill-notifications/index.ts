@@ -215,16 +215,18 @@ async function sendUserReminders(appServer: webpush.ApplicationServer): Promise<
     const success = await sendPushNotification(appServer, subscription, title, body, "/home");
     await logNotification(pill.id, pill.user_id, "user_reminder", success, success ? null : "Push failed");
 
-    // Update pill tracking
-    await supabase
-      .from("pill_tracking")
-      .update({
-        reminder_count: pill.reminder_count + 1,
-        last_reminder_at: now.toISO(),
-      })
-      .eq("id", pill.id);
-
-    if (success) sent++;
+    // Update pill tracking only if notification was sent successfully
+    // This allows retry on next run if push failed
+    if (success) {
+      await supabase
+        .from("pill_tracking")
+        .update({
+          reminder_count: pill.reminder_count + 1,
+          last_reminder_at: now.toISO(),
+        })
+        .eq("id", pill.id);
+      sent++;
+    }
   }
 
   logger.info(`Sent ${sent} user reminders`);
@@ -300,13 +302,15 @@ async function sendPartnerAlerts(appServer: webpush.ApplicationServer): Promise<
 
     await logNotification(pill.id, partner.id, "partner_alert", success, success ? null : "Push failed");
 
-    // Mark as alerted and update status to late_taken (they're late but might still take it)
-    await supabase
-      .from("pill_tracking")
-      .update({ partner_alerted: true, status: "late_taken" })
-      .eq("id", pill.id);
-
-    if (success) sent++;
+    // Mark as alerted only if notification was sent successfully
+    // This allows retry on next run if push failed
+    if (success) {
+      await supabase
+        .from("pill_tracking")
+        .update({ partner_alerted: true, status: "late_taken" })
+        .eq("id", pill.id);
+      sent++;
+    }
   }
 
   logger.info(`Sent ${sent} partner alerts`);

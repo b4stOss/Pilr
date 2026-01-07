@@ -278,6 +278,10 @@ inspector_port = 8083
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/MY_FUNCTION_NAME/*.html" ]
 
+# Pill notifications function - called by cron, uses CRON_SECRET for auth
+[functions.pill-notifications]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
