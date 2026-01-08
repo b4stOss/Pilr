@@ -1,9 +1,27 @@
-import { User } from "@supabase/supabase-js";
+import { User } from '@supabase/supabase-js';
+import { Tables, Enums } from './database.types';
 
-// User roles
-export type UserRole = 'user' | 'partner';
+// =============================================================================
+// DATABASE TYPES (from generated types)
+// =============================================================================
 
-// Base notification subscription type
+// Row types (what you get from SELECT)
+export type UserRow = Tables<'users'>;
+export type PillTrackingRow = Tables<'pill_tracking'>;
+export type PartnershipRow = Tables<'partnerships'>;
+export type NotificationLogRow = Tables<'notification_log'>;
+
+// Enum types
+export type AppRole = Enums<'user_role'>;
+export type PillStatus = Enums<'pill_status'>;
+export type PartnerStatus = Enums<'partner_status'>;
+export type NotificationType = Enums<'notification_type'>;
+
+// =============================================================================
+// BUSINESS TYPES (app-specific, not from DB)
+// =============================================================================
+
+// Push subscription data structure (stored in users.push_subscription JSONB)
 export interface PushSubscriptionData {
   endpoint: string;
   keys: {
@@ -12,43 +30,7 @@ export interface PushSubscriptionData {
   };
 }
 
-// User preferences with strict typing
-export interface UserPreference {
-  user_id: string;
-  email: string | null;
-  reminder_time: string | null; // Format: "HH:MM" in UTC
-  role: UserRole | null;
-  subscription: PushSubscriptionData | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Pill tracking with all possible states
-export type PillStatus = 'pending' | 'taken' | 'late' | 'missed';
-
-export interface PillTracking {
-  id: string;
-  user_id: string;
-  scheduled_time: string; // ISO string
-  status: PillStatus;
-  notification_count: number;
-  next_notification_time: string; // ISO string
-  taken_at: string | null;
-  created_at: string;
-}
-
-// Partner relationship
-export interface UserPartner {
-  id: string;
-  user_id: string;
-  partner_id: string;
-  status: 'active' | 'inactive' | 'pending';
-  notification_enabled: boolean;
-  created_at: string;
-  updated_at: string | null;
-}
-
-// Notification payload type
+// Notification payload for push messages
 export interface NotificationPayload {
   title: string;
   body: string;
@@ -59,18 +41,24 @@ export interface NotificationPayload {
   }>;
 }
 
-// API response types
+// Generic API response wrapper
 export interface ApiResponse<T> {
   data: T | null;
   error: Error | null;
 }
 
-// Auth context type
+// =============================================================================
+// CONTEXT TYPES
+// =============================================================================
+
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
-  userPreferences: UserPreference | null;
+  profile: UserRow | null;
+  partnerships: PartnershipRow[];
+  activeRole: AppRole | null;
+  hasPushSubscription: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  updateUserReminderTime: (userId: string, reminderTime: string, subscription: PushSubscriptionData) => Promise<boolean>;
+  refreshProfile: () => Promise<void>;
 }

@@ -1,10 +1,11 @@
 import { Stack, Flex, Text } from '@mantine/core';
-import { PillTracking } from '../types';
+import { DateTime } from 'luxon';
+import { PillTrackingRow } from '../types';
 import { StatusBadge } from './PillList';
 
-export function PillHistory({ pills }: { pills: PillTracking[] }) {
+export function PillHistory({ pills }: { pills: PillTrackingRow[] }) {
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString(undefined, {
+    return DateTime.fromISO(dateStr).toLocaleString({
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -12,10 +13,7 @@ export function PillHistory({ pills }: { pills: PillTracking[] }) {
   };
 
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return DateTime.fromISO(dateStr).toFormat('HH:mm');
   };
 
   // Group pills by date
@@ -28,7 +26,7 @@ export function PillHistory({ pills }: { pills: PillTracking[] }) {
       acc[date].push(pill);
       return acc;
     },
-    {} as Record<string, PillTracking[]>,
+    {} as Record<string, PillTrackingRow[]>,
   );
 
   return (
@@ -48,7 +46,7 @@ export function PillHistory({ pills }: { pills: PillTracking[] }) {
                 backgroundColor: 'rgba(0, 0, 0, 0.02)',
               }}
             >
-              <StatusBadge status={pill.status} />
+              <StatusBadge status={pill.status ?? 'pending'} />
               <Text size="sm">Scheduled: {formatTime(pill.scheduled_time)}</Text>
               {pill.taken_at && <Text size="sm">Taken: {formatTime(pill.taken_at)}</Text>}
             </Flex>

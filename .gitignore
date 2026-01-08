@@ -26,10 +26,12 @@ dist-ssr
 
 .env
 .env.local
-pnpm-lock.yaml
+supabase/.env
 
 src/assets/icons
 key.json
 
 localhost+2.pem
 localhost+2-key.pem
+
+CLAUDE.MD

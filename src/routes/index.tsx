@@ -1,4 +1,5 @@
 import { RouteObject, Navigate } from 'react-router-dom';
+import { Center, Loader } from '@mantine/core';
 import { HomePage } from '../pages/HomePage';
 import { LoginPage } from '../pages/LoginPage';
 import { MainLayout } from '../layouts/MainLayout';
@@ -12,10 +13,18 @@ function WithLayout({ children }: { children: React.ReactNode }) {
   return <MainLayout>{children}</MainLayout>;
 }
 
-// Basic auth check
+// Auth check with loading state
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return null;
+
+  if (loading) {
+    return (
+      <Center style={{ height: '100vh' }}>
+        <Loader color="black" />
+      </Center>
+    );
+  }
+
   return user ? <>{children}</> : <Navigate to="/" />;
 }
 

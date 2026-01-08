@@ -1,47 +1,59 @@
-// src/pages/RoleSelection.tsx
+// src/pages/RoleSelectionPage.tsx
 import { Box, Button, Center, Title, Text, Stack } from '@mantine/core';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import { UserRole } from '../types';
-import { useNotifications } from '../hooks/useNotifications';
+import { AppRole } from '../types';
 
 export function RoleSelectionPage() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // We'll initialize the hook with empty values and update them after role selection
-  const { error: notificationError } = useNotifications({
-    userId: user?.id || '',
-    userRole: selectedRole || 'user',
-  });
-
-  const setRoleAndNotifications = async (role: UserRole) => {
+  const setRoleAndNotifications = async (role: AppRole) => {
     if (!user) return;
 
     setIsProcessing(true);
+    setError(null);
     setSelectedRole(role);
 
     try {
-      // Save role to DB
-      const { error: roleError } = await supabase
-        .from('user_preferences')
-        .upsert({
-          user_id: user.id,
-          email: user.email,
-          role,
-        })
-        .select();
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
-      if (roleError) throw roleError;
+      if (role === 'pill_taker') {
+        // Update user with pill_taker role and default settings
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            role: 'pill_taker',
+            reminder_time: '09:00',
+            timezone,
+            active: true,
+          })
+          .eq('id', user.id);
 
-      // Instead of handling notifications here, redirect to notification page
+        if (updateError) throw updateError;
+      } else {
+        // Update user with partner role
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            role: 'partner',
+            active: true,
+          })
+          .eq('id', user.id);
+
+        if (updateError) throw updateError;
+      }
+
+      await refreshProfile();
       navigate('/notifications');
-    } catch (error) {
-      console.error('Failed to set role:', error);
+    } catch (err) {
+      console.error('Failed to set role:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save role');
     } finally {
       setIsProcessing(false);
     }
@@ -52,14 +64,14 @@ export function RoleSelectionPage() {
       <Stack>
         <Title order={2}>Choose Your Role</Title>
 
-        {notificationError && <Text size="sm">{notificationError}</Text>}
+        {error && <Text size="sm" c="red">{error}</Text>}
 
         <Box>
           <Button
             color="black"
-            onClick={() => setRoleAndNotifications('user')}
-            loading={isProcessing && selectedRole === 'user'}
-            disabled={isProcessing && selectedRole !== 'user'}
+            onClick={() => setRoleAndNotifications('pill_taker')}
+            loading={isProcessing && selectedRole === 'pill_taker'}
+            disabled={isProcessing && selectedRole !== 'pill_taker'}
             fullWidth
             mb="md"
           >

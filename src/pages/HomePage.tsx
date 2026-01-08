@@ -1,18 +1,20 @@
 // src/pages/HomePage.tsx
-import { Container, Flex, Button, Title, Collapse, Text, Stack, Tabs } from '@mantine/core';
-import { useAuth } from '../contexts/AuthContext';
-import Header from '../components/HeaderComponent';
+import { Container, Button, Title, Text, Stack, Modal } from '@mantine/core';
 import { useEffect, useState } from 'react';
+import { TimePicker } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
+import { DateTime } from 'luxon';
+import Header from '../components/HeaderComponent';
+import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { usePillTracking } from '../hooks/usePillTracking';
-import { PillList } from '../components/PillList';
-import { PillHistory } from '../components/PillHistory';
-import { localToUtcTime, utcToLocalTime } from '../lib/push';
-import { supabase } from '../lib/supabase';
 import { usePartnerManagement } from '../hooks/usePartnerManagement';
+import { TodayView } from '../components/TodayView';
+import { CalendarHistory } from '../components/CalendarHistory';
+import { ComplianceStats } from '../components/ComplianceStats';
 import { PartnerManagement } from '../components/PartnerManagement';
-import { TimeInput } from '@mantine/dates';
+import { BottomNav } from '../components/BottomNav';
+import { supabase } from '../lib/supabase';
 
 function isValidTimeFormat(time: string): boolean {
   // First check if it's a valid time
@@ -20,36 +22,34 @@ function isValidTimeFormat(time: string): boolean {
     return false;
   }
 
-  // Then check if minutes are divisible by 5
+  // Check if minutes are divisible by 15 (aligned with cron schedule)
   const minutes = parseInt(time.split(':')[1]);
-  return minutes % 5 === 0;
+  return minutes % 15 === 0;
 }
 
 export function HomePage() {
-  const { user } = useAuth();
+  const { user, profile, hasPushSubscription, refreshProfile } = useAuth();
+  const [activeTab, setActiveTab] = useState<'today' | 'history' | 'partner'>('today');
   const [reminderTime, setReminderTime] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [opened, { toggle }] = useDisclosure(false);
   const [timeError, setTimeError] = useState<string | null>(null);
 
-  const {
-    isSubscribed,
-    subscribe,
-    error: notificationError,
-  } = useNotifications({
+  const { isSubscribed, subscribe } = useNotifications({
     userId: user?.id || '',
-    userRole: 'user',
+    isInitiallySubscribed: hasPushSubscription,
   });
 
   const {
     todayPills,
-    historyPills,
+    allPills,
+    pillsByDate,
+    streak,
     error: pillError,
     markPillStatus,
     refreshPills,
   } = usePillTracking({
     userId: user?.id || '',
-    daysToFetch: 7,
   });
 
   const {
@@ -62,54 +62,36 @@ export function HomePage() {
     userId: user?.id || '',
   });
 
-  // Generate time options every 30 minutes
-  // const timeOptions = Array.from({ length: 48 }, (_, i) => {
-  //   const hour = Math.floor(i / 2)
-  //     .toString()
-  //     .padStart(2, '0');
-  //   const minute = i % 2 === 0 ? '00' : '30';
-  //   return {
-  //     value: `${hour}:${minute}`,
-  //     label: `${hour}:${minute}`,
-  //   };
-  // });
+  const handleAddPartner = async (partnerId: string) => {
+    await addPartner(partnerId);
+    await refreshProfile();
+  };
 
-  // Fetch initial reminder time
+  const handleRemovePartner = async (partnerId: string) => {
+    await removePartner(partnerId);
+    await refreshProfile();
+  };
+
+  // Sync reminder time from profile
   useEffect(() => {
-    const fetchReminderTime = async () => {
-      if (!user?.id) return;
+    if (profile?.reminder_time) {
+      const [hours = '00', minutes = '00'] = profile.reminder_time.split(':');
+      setReminderTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+    }
+  }, [profile]);
 
-      try {
-        const { data, error } = await supabase.from('user_preferences').select('reminder_time').eq('user_id', user.id).single();
+  const handleTimeChange = (value: string) => {
+    setReminderTime(value);
 
-        if (error) throw error;
-
-        if (data?.reminder_time) {
-          // Convert UTC time to local time for the input
-          const localTime = utcToLocalTime(data.reminder_time);
-          setReminderTime(localTime);
-        }
-      } catch (error) {
-        console.error('Error fetching reminder time:', error);
-      }
-    };
-
-    fetchReminderTime();
-  }, [user]);
-
-  const handleTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = event.target.value;
-    setReminderTime(newTime);
-
-    // Clear error if input is empty (allowing user to type)
-    if (!newTime) {
+    // Clear error if input is empty
+    if (!value) {
       setTimeError(null);
       return;
     }
 
-    // Show error if time isn't in 5-minute intervals
-    if (!isValidTimeFormat(newTime)) {
-      setTimeError('Time should be in 5-minute intervals (e.g., 09:00, 09:05, 09:10)');
+    // Show error if time isn't in 15-minute intervals
+    if (!isValidTimeFormat(value)) {
+      setTimeError('Time should be in 15-minute intervals (e.g., 09:00, 09:15, 09:30, 09:45)');
     } else {
       setTimeError(null);
     }
@@ -128,62 +110,37 @@ export function HomePage() {
         }
       }
 
-      // Save reminder time preference
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
       const { error: updateError } = await supabase
-        .from('user_preferences')
-        .update({ reminder_time: localToUtcTime(reminderTime) })
-        .eq('user_id', user.id);
+        .from('users')
+        .update({
+          reminder_time: reminderTime,
+          timezone,
+        })
+        .eq('id', user.id);
 
       if (updateError) throw updateError;
 
-      // Find any existing pending pills
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Update today's pending pill with the new scheduled time
+      const [hours, minutes] = reminderTime.split(':').map(Number);
+      const now = DateTime.now().setZone(timezone);
+      const scheduledTime = now.startOf('day').set({ hour: hours, minute: minutes });
 
-      const { data: existingPills } = await supabase
+      if (!scheduledTime.isValid) {
+        throw new Error(`Invalid scheduled time: ${scheduledTime.invalidReason}`);
+      }
+
+      // Update today's pending pill if it exists
+      await supabase
         .from('pill_tracking')
-        .select('*')
+        .update({ scheduled_time: scheduledTime.toUTC().toISO() })
         .eq('user_id', user.id)
         .eq('status', 'pending')
-        .gte('scheduled_time', today.toISOString()) // Look from today onwards
-        .order('scheduled_time') // Order by time
-        .limit(1); // Get the next pending pill
+        .gte('scheduled_time', now.startOf('day').toUTC().toISO())
+        .lte('scheduled_time', now.endOf('day').toUTC().toISO());
 
-      // Set up new scheduled time
-      const [hours, minutes] = reminderTime.split(':').map(Number);
-      const scheduledTime = new Date(today);
-      scheduledTime.setHours(hours, minutes, 0, 0);
-
-      if (scheduledTime < new Date()) {
-        scheduledTime.setDate(scheduledTime.getDate() + 1);
-      }
-
-      if (existingPills && existingPills.length > 0) {
-        // Update existing pill
-        const { error: pillError } = await supabase
-          .from('pill_tracking')
-          .update({
-            scheduled_time: scheduledTime.toISOString(),
-            next_notification_time: scheduledTime.toISOString(),
-            notification_count: 0, // Reset notification count
-          })
-          .eq('id', existingPills[0].id);
-
-        if (pillError) throw pillError;
-      } else {
-        // Create new pill entry
-        const { error: pillError } = await supabase.from('pill_tracking').insert({
-          user_id: user.id,
-          scheduled_time: scheduledTime.toISOString(),
-          status: 'pending',
-          notification_count: 0,
-          next_notification_time: scheduledTime.toISOString(),
-        });
-
-        if (pillError) throw pillError;
-      }
-
-      await refreshPills();
+      await Promise.all([refreshProfile(), refreshPills()]);
       toggle();
     } catch (error) {
       console.error('Error saving reminder time:', error);
@@ -193,68 +150,79 @@ export function HomePage() {
   };
 
   return (
-    <Container style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Container
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        paddingBottom: 100,
+      }}
+    >
       <Header />
+
       <Stack mt="xl" style={{ flex: 1 }}>
-        {(notificationError || pillError || partnerError) && <Text size="sm">{notificationError || pillError || partnerError}</Text>}
+        {(pillError || partnerError) && (
+          <Text size="sm" c="red">
+            {pillError || partnerError}
+          </Text>
+        )}
 
-        <PartnerManagement
-          activePartner={activePartner}
-          availablePartners={availablePartners}
-          onAddPartner={addPartner}
-          onRemovePartner={removePartner}
-        />
+        {/* Today Tab */}
+        {activeTab === 'today' && (
+          <TodayView
+            pill={todayPills[0] || null}
+            reminderTime={profile?.reminder_time ?? null}
+            streak={streak}
+            onMarkTaken={(pillId) => markPillStatus(pillId, 'taken')}
+            onEditReminder={toggle}
+          />
+        )}
 
-        <Tabs defaultValue="today" color="black">
-          <Tabs.List grow>
-            <Tabs.Tab value="today">Today</Tabs.Tab>
-            <Tabs.Tab value="history">History</Tabs.Tab>
-          </Tabs.List>
+        {/* Edit Reminder Modal */}
+        <Modal opened={opened} onClose={toggle} title="Edit Reminder Time" centered radius="lg">
+          <Stack align="center" gap="lg">
+            <TimePicker
+              value={reminderTime}
+              onChange={handleTimeChange}
+              format="24h"
+              minutesStep={15}
+              error={timeError}
+            />
+            <Button
+              onClick={handleSaveReminderTime}
+              color="black"
+              loading={isSaving}
+              disabled={!reminderTime || !!timeError}
+              fullWidth
+            >
+              Save
+            </Button>
+          </Stack>
+        </Modal>
 
-          <Tabs.Panel value="today" pt="md">
-            <Stack>
-              <Title order={2}>Today's Pills</Title>
-              <PillList pills={todayPills} onStatusChange={markPillStatus} />
-            </Stack>
-          </Tabs.Panel>
+        {/* History Tab */}
+        {activeTab === 'history' && (
+          <Stack gap="lg">
+            <ComplianceStats pills={allPills} />
+            <CalendarHistory pillsByDate={pillsByDate} />
+          </Stack>
+        )}
 
-          <Tabs.Panel value="history" pt="md">
-            <Stack>
-              <Title order={2}>Past 7 Days</Title>
-              <PillHistory pills={historyPills} />
-            </Stack>
-          </Tabs.Panel>
-        </Tabs>
-
-        <Flex justify="center" direction="column" gap="md" mt="auto" pb="md">
-          <Button color="black" onClick={toggle} variant="outline" radius="xl">
-            Edit reminder
-          </Button>
-
-          <Collapse in={opened}>
-            <Stack align="center">
-              <TimeInput value={reminderTime} step={1800} onChange={handleTimeChange} withSeconds={false} error={timeError} />
-              {/* <NativeSelect
-                value={reminderTime}
-                size="md"
-                color="black"
-                onChange={(event) => setReminderTime(event.currentTarget.value || '')}
-                data={timeOptions}
-              /> */}
-              {/* <Select
-                value={reminderTime}
-                onChange={(value) => setReminderTime(value || '')}
-                data={timeOptions}
-                searchable
-                placeholder="Select time"
-              /> */}
-              <Button onClick={handleSaveReminderTime} color="black" loading={isSaving} disabled={!reminderTime || !!timeError}>
-                Save
-              </Button>
-            </Stack>
-          </Collapse>
-        </Flex>
+        {/* Partner Tab */}
+        {activeTab === 'partner' && (
+          <Stack>
+            <Title order={2}>Partner</Title>
+            <PartnerManagement
+              activePartner={activePartner}
+              availablePartners={availablePartners}
+              onAddPartner={handleAddPartner}
+              onRemovePartner={handleRemovePartner}
+            />
+          </Stack>
+        )}
       </Stack>
+
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </Container>
   );
 }

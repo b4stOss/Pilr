@@ -1,4 +1,5 @@
 import '@mantine/core/styles.css';
+import '@mantine/dates/styles.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { routes } from './routes';
 import { useRoutes } from 'react-router-dom';

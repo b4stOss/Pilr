@@ -1,0 +1,234 @@
+/* Ripple button container */
+.rippleContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+/* Outer glow effect */
+.rippleGlow {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.03) 0%, transparent 70%);
+  filter: blur(20px);
+  transition: all 0.5s ease;
+}
+
+/* Concentric rings - creates the "water ripple" effect */
+.rippleRing {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: all 0.4s ease;
+}
+
+.rippleRing1 {
+  width: 260px;
+  height: 260px;
+  border-color: rgba(0, 0, 0, 0.03);
+}
+
+.rippleRing2 {
+  width: 230px;
+  height: 230px;
+  border-color: rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+.rippleRing3 {
+  width: 215px;
+  height: 215px;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+/* Main button */
+.mainButton {
+  position: relative;
+  z-index: 10;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background-color: #fff;
+  border: none;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.02),
+    0 8px 16px rgba(0, 0, 0, 0.04),
+    0 16px 32px rgba(0, 0, 0, 0.04),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mainButton:hover {
+  transform: scale(1.02);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.03),
+    0 12px 24px rgba(0, 0, 0, 0.06),
+    0 24px 48px rgba(0, 0, 0, 0.06),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.mainButton:active {
+  transform: scale(0.96);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.02),
+    0 4px 8px rgba(0, 0, 0, 0.04),
+    0 8px 16px rgba(0, 0, 0, 0.04),
+    inset 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mainButton:disabled {
+  cursor: default;
+}
+
+/* Taken state */
+.mainButtonTaken {
+  background-color: #34D399;
+  box-shadow:
+    0 2px 4px rgba(52, 211, 153, 0.1),
+    0 8px 16px rgba(52, 211, 153, 0.15),
+    0 16px 32px rgba(52, 211, 153, 0.1);
+}
+
+.mainButtonTaken:hover {
+  box-shadow:
+    0 4px 8px rgba(52, 211, 153, 0.15),
+    0 12px 24px rgba(52, 211, 153, 0.2),
+    0 24px 48px rgba(52, 211, 153, 0.15);
+}
+
+/* Hover effect on rings */
+.rippleContainer:hover .rippleRing1 {
+  transform: scale(1.05);
+  border-color: rgba(0, 0, 0, 0.04);
+}
+
+.rippleContainer:hover .rippleRing2 {
+  transform: scale(1.03);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.rippleContainer:hover .rippleRing3 {
+  transform: scale(1.02);
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+.rippleContainer:hover .rippleGlow {
+  transform: scale(1.1);
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.05) 0%, transparent 70%);
+}
+
+/* Taken state rings */
+.rippleContainerTaken .rippleRing1 {
+  border-color: rgba(52, 211, 153, 0.1);
+}
+
+.rippleContainerTaken .rippleRing2 {
+  border-color: rgba(52, 211, 153, 0.15);
+  box-shadow: 0 4px 20px rgba(52, 211, 153, 0.05);
+}
+
+.rippleContainerTaken .rippleRing3 {
+  border-color: rgba(52, 211, 153, 0.2);
+  box-shadow: 0 2px 10px rgba(52, 211, 153, 0.08);
+}
+
+.rippleContainerTaken .rippleGlow {
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.1) 0%, transparent 70%);
+}
+
+/* Button content animation */
+.buttonContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: transform 0.3s ease;
+}
+
+.mainButton:hover .buttonContent {
+  transform: scale(1.05);
+}
+
+.mainButton:active .buttonContent {
+  transform: scale(0.95);
+}
+
+/* Subtle hint text */
+.hintText {
+  position: absolute;
+  bottom: 24px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.3s ease;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #9ca3af;
+}
+
+.mainButton:hover .hintText {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Progress ring SVG */
+.progressRing {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.progressCircle {
+  transition: stroke 0.2s ease;
+}
+
+/* Holding state */
+.mainButtonHolding {
+  transform: scale(0.96);
+  box-shadow:
+    0 2px 4px rgba(52, 211, 153, 0.1),
+    0 4px 8px rgba(52, 211, 153, 0.15),
+    0 8px 16px rgba(52, 211, 153, 0.1),
+    inset 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mainButtonHolding .buttonContent {
+  transform: scale(0.95);
+}
+
+/* Hide hint when holding */
+.mainButtonHolding .hintText {
+  opacity: 0;
+}
+
+/* Animate rings when holding */
+.rippleContainer:has(.mainButtonHolding) .rippleRing1 {
+  border-color: rgba(52, 211, 153, 0.15);
+  transform: scale(1.02);
+}
+
+.rippleContainer:has(.mainButtonHolding) .rippleRing2 {
+  border-color: rgba(52, 211, 153, 0.2);
+  transform: scale(1.01);
+}
+
+.rippleContainer:has(.mainButtonHolding) .rippleRing3 {
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+.rippleContainer:has(.mainButtonHolding) .rippleGlow {
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.08) 0%, transparent 70%);
+}

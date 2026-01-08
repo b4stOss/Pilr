@@ -1,44 +1,50 @@
 import { Button, Center, Title, Text, Stack } from '@mantine/core';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
 import { useAuth } from '../contexts/AuthContext';
-import { useState, useEffect } from 'react';
 
 export function NotificationPermissionPage() {
   const navigate = useNavigate();
-  const { user, userPreferences } = useAuth();
+  const { user, activeRole, hasPushSubscription, refreshProfile } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const { error, subscribe } = useNotifications({
+  const [error, setError] = useState<string | null>(null);
+  const { subscribe } = useNotifications({
     userId: user?.id || '',
-    userRole: userPreferences?.role || 'user',
+    isInitiallySubscribed: hasPushSubscription,
   });
 
   // Handle auth check in useEffect
   useEffect(() => {
-    if (!user || !userPreferences) {
+    if (!user || !activeRole) {
       navigate('/');
     }
-  }, [user, userPreferences, navigate]);
+  }, [user, activeRole, navigate]);
 
   const handleEnableNotifications = async () => {
     try {
       setIsProcessing(true);
+      setError(null);
       const success = await subscribe();
 
       if (success) {
         // Navigate to appropriate page based on role
-        navigate(userPreferences?.role === 'partner' ? '/partner' : '/home');
+        await refreshProfile();
+        navigate(activeRole === 'partner' ? '/partner' : '/home');
+      } else {
+        setError('Failed to enable notifications. Please try again.');
       }
     } catch (err) {
       console.error('Failed to enable notifications:', err);
+      setError(err instanceof Error ? err.message : 'Failed to enable notifications');
     } finally {
       setIsProcessing(false);
     }
   };
 
   // If no user or preferences, render nothing while the effect handles navigation
-  if (!user || !userPreferences) {
+  if (!user || !activeRole) {
     return null;
   }
 

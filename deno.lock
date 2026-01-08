@@ -1,0 +1,73 @@
+{
+  "version": "4",
+  "specifiers": {
+    "jsr:@negrel/http-ece@0.7.0": "0.7.0",
+    "jsr:@negrel/webpush@*": "0.5.0",
+    "jsr:@std/bytes@1": "1.0.6",
+    "jsr:@std/encoding@1": "1.0.10"
+  },
+  "jsr": {
+    "@negrel/http-ece@0.7.0": {
+      "integrity": "068e61ba6f52da5454051a283cc19621607f8dd6e74d55c01bb365b8c6644076",
+      "dependencies": [
+        "jsr:@std/bytes",
+        "jsr:@std/encoding"
+      ]
+    },
+    "@negrel/webpush@0.5.0": {
+      "integrity": "919ed5bf4d676923667c5278093f36ffb2efe7fe2f155b6d32723ea3b73fa693",
+      "dependencies": [
+        "jsr:@negrel/http-ece",
+        "jsr:@std/bytes",
+        "jsr:@std/encoding"
+      ]
+    },
+    "@std/bytes@1.0.6": {
+      "integrity": "f6ac6adbd8ccd99314045f5703e23af0a68d7f7e58364b47d2c7f408aeb5820a"
+    },
+    "@std/encoding@1.0.10": {
+      "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
+    }
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@eslint/js@^9.17.0",
+        "npm:@mantine/core@^8.3.11",
+        "npm:@mantine/dates@^8.3.11",
+        "npm:@mantine/hooks@^8.3.11",
+        "npm:@supabase/auth-ui-react@~0.4.7",
+        "npm:@supabase/auth-ui-shared@~0.1.8",
+        "npm:@supabase/supabase-js@^2.48.0",
+        "npm:@tabler/icons-react@^3.36.1",
+        "npm:@types/luxon@^3.7.1",
+        "npm:@types/react-dom@^18.3.5",
+        "npm:@types/react@^18.3.18",
+        "npm:@vitejs/plugin-react@^4.3.4",
+        "npm:deno@^2.1.7",
+        "npm:eslint-plugin-react-hooks@5",
+        "npm:eslint-plugin-react-refresh@~0.4.16",
+        "npm:eslint@^9.17.0",
+        "npm:globals@^15.14.0",
+        "npm:luxon@^3.7.2",
+        "npm:postcss-preset-mantine@^1.17.0",
+        "npm:postcss-simple-vars@^7.0.1",
+        "npm:postcss@^8.5.1",
+        "npm:prettier@3.4.2",
+        "npm:react-dom@^18.3.1",
+        "npm:react-router-dom@^7.1.3",
+        "npm:react@^18.3.1",
+        "npm:standard-version@^9.5.0",
+        "npm:supabase@^2.6.8",
+        "npm:typescript-eslint@^8.18.2",
+        "npm:typescript@~5.6.2",
+        "npm:vite-plugin-pwa@~0.21.1",
+        "npm:vite@^6.0.5",
+        "npm:workbox-core@^7.4.0",
+        "npm:workbox-precaching@^7.4.0",
+        "npm:workbox-routing@^7.4.0",
+        "npm:workbox-window@^7.4.0"
+      ]
+    }
+  }
+}
