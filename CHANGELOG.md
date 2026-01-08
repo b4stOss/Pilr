@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.0.0](https://github.com/Batgame/pilr/compare/v0.0.4...v1.0.0) (2026-01-08)
+
+
+### Features
+
+* new edge function + update UI ([f5bb37c](https://github.com/Batgame/pilr/commit/f5bb37cfda2742b49eb2e5320595c178dcd70f02))
+
+
+### Bug Fixes
+
+* UI ([13029e9](https://github.com/Batgame/pilr/commit/13029e91c533d295e49da32c1573c0189949dff6))
+
 ### [0.0.4](https://github.com/Batgame/pill-pwa/compare/v0.0.3...v0.0.4) (2025-02-03)
 
 
