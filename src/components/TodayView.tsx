@@ -94,7 +94,7 @@ export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditRemin
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <Stack gap="lg" align="center" style={{ flex: 1 }} justify="center">
+    <Stack gap="xl" align="center" style={{ flex: 1 }} justify="center">
       {/* Date */}
       <Title order={1} ta="center">
         {dateString}

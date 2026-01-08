@@ -7,37 +7,52 @@ interface ComplianceStatsProps {
 }
 
 export function ComplianceStats({ pills }: ComplianceStatsProps) {
-  const todayEnd = DateTime.now().endOf('day');
+  const now = DateTime.now();
+  const monthStart = now.startOf('month');
+  const todayEnd = now.endOf('day');
+
+  // Filter pills for current month only
+  const currentMonthPills = pills.filter((pill) => {
+    const pillDate = DateTime.fromISO(pill.scheduled_time);
+    return pillDate >= monthStart && pillDate <= todayEnd;
+  });
 
   // Calculate stats from pills
-  const stats = pills.reduce(
+  const stats = currentMonthPills.reduce(
     (acc, pill) => {
       const pillDate = DateTime.fromISO(pill.scheduled_time);
       const isFuture = pillDate > todayEnd;
 
       if (isFuture || pill.status === 'pending') {
-        acc.future++;
-      } else if (pill.status === 'taken' || pill.status === 'late_taken') {
+        // Don't count future/pending pills
+      } else if (pill.status === 'taken') {
         acc.taken++;
+      } else if (pill.status === 'late_taken') {
+        acc.late++;
       } else if (pill.status === 'missed') {
         acc.missed++;
       }
       return acc;
     },
-    { taken: 0, missed: 0, future: 0 },
+    { taken: 0, late: 0, missed: 0 },
   );
 
-  const totalPast = stats.taken + stats.missed;
-  const compliancePercentage = totalPast > 0 ? Math.round((stats.taken / totalPast) * 100) : 100;
+  const totalPast = stats.taken + stats.late + stats.missed;
+  const compliancePercentage = totalPast > 0 ? Math.round(((stats.taken + stats.late) / totalPast) * 100) : 100;
 
   return (
     <Paper p="lg" radius="lg" shadow="md" style={{ backgroundColor: '#fff' }}>
       <Stack gap="md">
         {/* Percentage Header */}
         <Group justify="space-between" align="center">
-          <Text size="lg" fw={600}>
-            Compliance
-          </Text>
+          <Stack gap={0}>
+            <Text size="lg" fw={600}>
+              Compliance
+            </Text>
+            <Text size="xs" c="dimmed">
+              This month
+            </Text>
+          </Stack>
           <Text size="xl" fw={700} c="pill-green.4">
             {compliancePercentage}%
           </Text>
@@ -48,9 +63,9 @@ export function ComplianceStats({ pills }: ComplianceStatsProps) {
 
         {/* Stats Grid */}
         <SimpleGrid cols={3} spacing="xs">
-          <StatBox label="Taken" value={stats.taken} color="#34D399" />
+          <StatBox label="On Time" value={stats.taken} color="#34D399" />
+          <StatBox label="Late" value={stats.late} color="#FBBF24" />
           <StatBox label="Missed" value={stats.missed} color="#F87171" />
-          <StatBox label="Scheduled" value={stats.future} color="#9CA3AF" />
         </SimpleGrid>
       </Stack>
     </Paper>

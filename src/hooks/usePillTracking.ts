@@ -124,13 +124,12 @@ export function usePillTracking({ userId, daysToFetch = 60 }: UsePillTrackingPro
       setError(null);
       const nowIso = DateTime.now().toUTC().toISO();
 
-      // Find current pill to check its status
+      // Find current pill to check its state
       const currentPill = allPills.find((p) => p.id === pillId);
-      const currentStatus = currentPill?.status;
 
-      // If marking as taken but was missed/late_taken, use late_taken instead
+      // If marking as taken but partner was already alerted, use late_taken instead
       let finalStatus = status;
-      if (status === 'taken' && (currentStatus === 'missed' || currentStatus === 'late_taken')) {
+      if (status === 'taken' && currentPill?.partner_alerted) {
         finalStatus = 'late_taken';
       }
 

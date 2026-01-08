@@ -1,9 +1,10 @@
 // src/pages/HomePage.tsx
-import { Container, Button, Title, Text, Stack, Modal } from '@mantine/core';
+import { Container, Button, Text, Stack, Modal, Paper, Group, Avatar, Box } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { TimePicker } from '@mantine/dates';
 import { useDisclosure } from '@mantine/hooks';
 import { DateTime } from 'luxon';
+import { IconUserMinus } from '@tabler/icons-react';
 import Header from '../components/HeaderComponent';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
@@ -12,7 +13,7 @@ import { usePartnerManagement } from '../hooks/usePartnerManagement';
 import { TodayView } from '../components/TodayView';
 import { CalendarHistory } from '../components/CalendarHistory';
 import { ComplianceStats } from '../components/ComplianceStats';
-import { PartnerManagement } from '../components/PartnerManagement';
+import { InviteCodeCard } from '../components/InviteCodeCard';
 import { BottomNav } from '../components/BottomNav';
 import { supabase } from '../lib/supabase';
 
@@ -53,22 +54,15 @@ export function HomePage() {
   });
 
   const {
-    availablePartners,
     activePartner,
     error: partnerError,
-    addPartner,
     removePartner,
   } = usePartnerManagement({
     userId: user?.id || '',
   });
 
-  const handleAddPartner = async (partnerId: string) => {
-    await addPartner(partnerId);
-    await refreshProfile();
-  };
-
-  const handleRemovePartner = async (partnerId: string) => {
-    await removePartner(partnerId);
+  const handleRemovePartner = async () => {
+    await removePartner();
     await refreshProfile();
   };
 
@@ -149,6 +143,13 @@ export function HomePage() {
     }
   };
 
+  // Extract display name from email
+  const getDisplayName = (email: string | null | undefined): string => {
+    if (!email) return 'Partner';
+    const name = email.split('@')[0];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
+
   return (
     <Container
       style={{
@@ -203,21 +204,55 @@ export function HomePage() {
         {/* History Tab */}
         {activeTab === 'history' && (
           <Stack gap="lg">
-            <ComplianceStats pills={allPills} />
             <CalendarHistory pillsByDate={pillsByDate} />
+            <ComplianceStats pills={allPills} />
           </Stack>
         )}
 
         {/* Partner Tab */}
         {activeTab === 'partner' && (
-          <Stack>
-            <Title order={2}>Partner</Title>
-            <PartnerManagement
-              activePartner={activePartner}
-              availablePartners={availablePartners}
-              onAddPartner={handleAddPartner}
-              onRemovePartner={handleRemovePartner}
-            />
+          <Stack gap="md">
+            {activePartner ? (
+              // Partner is linked - show info + unlink button
+              <Paper p="lg" radius="lg" shadow="sm" bg="white">
+                <Stack gap="md">
+                  <Text size="sm" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+                    Connected Partner
+                  </Text>
+
+                  <Group>
+                    <Avatar size={48} radius="xl" color="blue">
+                      {getDisplayName(activePartner.email).charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Box>
+                      <Text size="md" fw={600}>
+                        {getDisplayName(activePartner.email)}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        {activePartner.email}
+                      </Text>
+                    </Box>
+                  </Group>
+
+                  <Button
+                    variant="light"
+                    color="red"
+                    leftSection={<IconUserMinus size={18} />}
+                    onClick={handleRemovePartner}
+                    fullWidth
+                  >
+                    Unlink Partner
+                  </Button>
+                </Stack>
+              </Paper>
+            ) : (
+              // No partner - show invite code card
+              <InviteCodeCard
+                userId={user?.id || ''}
+                firstName={profile?.first_name ?? null}
+                onFirstNameSaved={refreshProfile}
+              />
+            )}
           </Stack>
         )}
       </Stack>

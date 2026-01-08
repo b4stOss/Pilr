@@ -10,6 +10,7 @@ export type UserRow = Tables<'users'>;
 export type PillTrackingRow = Tables<'pill_tracking'>;
 export type PartnershipRow = Tables<'partnerships'>;
 export type NotificationLogRow = Tables<'notification_log'>;
+export type InviteCodeRow = Tables<'invite_codes'>;
 
 // Enum types
 export type AppRole = Enums<'user_role'>;

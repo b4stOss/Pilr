@@ -307,7 +307,7 @@ async function sendPartnerAlerts(appServer: webpush.ApplicationServer): Promise<
     if (success) {
       await supabase
         .from("pill_tracking")
-        .update({ partner_alerted: true, status: "late_taken" })
+        .update({ partner_alerted: true })
         .eq("id", pill.id);
       sent++;
     }
@@ -357,9 +357,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
     logger.info("Starting pill-notifications job");
     const appServer = await setupWebPush();
 
-    // Execute all tasks
-    const [pillsCreated, remindersSent, alertsSent, pillsMissed] = await Promise.all([
-      createDailyPills(),
+    // First, create daily pills (must complete before sending reminders)
+    const pillsCreated = await createDailyPills();
+
+    // Then execute remaining tasks in parallel
+    const [remindersSent, alertsSent, pillsMissed] = await Promise.all([
       sendUserReminders(appServer),
       sendPartnerAlerts(appServer),
       markMissedPills(),

@@ -1,20 +1,36 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Center, Container, Text, Title, Loader, Stack } from '@mantine/core';
+import {
+  Center,
+  Container,
+  Text,
+  Loader,
+  Stack,
+  Box,
+  Button,
+  ThemeIcon,
+} from '@mantine/core';
+import { IconKey, IconDeviceMobile } from '@tabler/icons-react';
 import { usePillTracking } from '../hooks/usePillTracking';
-import { PillList } from '../components/PillList';
 import { CalendarHistory } from '../components/CalendarHistory';
 import { ComplianceStats } from '../components/ComplianceStats';
-import { BottomNav } from '../components/BottomNav';
+import { TodayStatusCard } from '../components/TodayStatusCard';
 import Header from '../components/HeaderComponent';
 
+interface LinkedUser {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+}
+
 export function PartnerPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [linkedUserId, setLinkedUserId] = useState<string | null>(null);
+  const [linkedUser, setLinkedUser] = useState<LinkedUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'today' | 'history' | 'partner'>('today');
 
   const {
     todayPills,
@@ -22,7 +38,7 @@ export function PartnerPage() {
     pillsByDate,
     error: pillError,
   } = usePillTracking({
-    userId: linkedUserId || '',
+    userId: linkedUser?.id || '',
   });
 
   useEffect(() => {
@@ -36,9 +52,11 @@ export function PartnerPage() {
 
       try {
         setError(null);
+
+        // Fetch partnership with pill_taker profile
         const { data, error } = await supabase
           .from('partnerships')
-          .select('pill_taker_id, status')
+          .select('pill_taker_id, status, users!partnerships_pill_taker_id_fkey(id, email, first_name)')
           .eq('partner_id', user.id)
           .eq('status', 'active')
           .maybeSingle();
@@ -49,8 +67,13 @@ export function PartnerPage() {
             setError('Failed to fetch user link');
           }
 
-          if (data?.pill_taker_id) {
-            setLinkedUserId(data.pill_taker_id);
+          if (data?.users) {
+            const userData = data.users as unknown as { id: string; email: string | null; first_name: string | null };
+            setLinkedUser({
+              id: userData.id,
+              email: userData.email,
+              firstName: userData.first_name,
+            });
           }
           setIsLoading(false);
         }
@@ -70,12 +93,21 @@ export function PartnerPage() {
     };
   }, [user]);
 
+  // Get display name: prefer first_name, fallback to email
+  const getDisplayName = (user: LinkedUser): string => {
+    if (user.firstName) return user.firstName;
+    if (user.email) {
+      const name = user.email.split('@')[0];
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    return 'User';
+  };
+
   if (isLoading) {
     return (
       <Container>
-        <Header />
         <Center style={{ height: '80vh' }}>
-          <Loader color="black" />
+          <Loader color="dark" />
         </Center>
       </Container>
     );
@@ -84,27 +116,90 @@ export function PartnerPage() {
   if (error) {
     return (
       <Container>
-        <Header />
         <Center style={{ height: '80vh' }}>
-          <Text>{error}</Text>
+          <Text c="red">{error}</Text>
         </Center>
       </Container>
     );
   }
 
-  if (!linkedUserId) {
+  // No active link - show empty state with CTA
+  if (!linkedUser) {
     return (
-      <Container>
+      <Container
+        style={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <Header />
-        <Center style={{ height: '80vh' }}>
-          <Stack>
-            <Text size="lg">No Active Links</Text>
-            <Text size="sm">You are not currently linked to any users.</Text>
+
+        {/* Empty state content */}
+        <Stack
+          align="center"
+          justify="center"
+          gap="xl"
+          style={{ flex: 1 }}
+          pb={60}
+        >
+          {/* Illustration */}
+          <Box
+            style={{
+              width: 160,
+              height: 160,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(0, 0, 0, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ThemeIcon
+              size={80}
+              radius="xl"
+              variant="transparent"
+              color="dark"
+            >
+              <IconDeviceMobile size={64} stroke={1.5} />
+            </ThemeIcon>
+          </Box>
+
+          {/* Text content */}
+          <Stack align="center" gap="xs">
+            <Text size="xl" fw={700} c="dark">
+              No Active Links
+            </Text>
+            <Text size="sm" c="dimmed" ta="center" maw={300}>
+              It looks like you haven't connected with your partner yet. Link accounts to stay in sync and receive reminders.
+            </Text>
           </Stack>
-        </Center>
+
+          {/* CTA */}
+          <Button
+            color="dark"
+            size="lg"
+            leftSection={<IconKey size={20} />}
+            onClick={() => navigate('/enter-code')}
+          >
+            Enter Invitation Code
+          </Button>
+
+          {/* Help link */}
+          <Button
+            variant="subtle"
+            color="gray"
+            size="sm"
+          >
+            Where do I find my code?
+          </Button>
+        </Stack>
       </Container>
     );
   }
+
+  // Has active link - show dashboard
+  const displayName = getDisplayName(linkedUser);
 
   return (
     <Container
@@ -112,48 +207,28 @@ export function PartnerPage() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        paddingBottom: 100,
+        paddingBottom: 24,
       }}
     >
       <Header />
 
-      <Stack mt="xl" style={{ flex: 1 }}>
+      {/* Content */}
+      <Stack gap="md" style={{ flex: 1 }} mt="lg">
         {pillError && (
           <Text size="sm" c="red">
             {pillError}
           </Text>
         )}
 
-        {/* Today Tab */}
-        {activeTab === 'today' && (
-          <Stack>
-            <Title order={2}>Today's Pills</Title>
-            <PillList
-              pills={todayPills}
-              onStatusChange={async () => {}} // Partners can't change status
-            />
-          </Stack>
-        )}
+        {/* Today Status Card */}
+        <TodayStatusCard pills={todayPills} name={displayName} />
 
-        {/* History Tab */}
-        {activeTab === 'history' && (
-          <Stack gap="lg">
-            <Title order={2}>History</Title>
-            <ComplianceStats pills={allPills} />
-            <CalendarHistory pillsByDate={pillsByDate} />
-          </Stack>
-        )}
+        {/* Calendar */}
+        <CalendarHistory pillsByDate={pillsByDate} />
 
-        {/* Partner Tab */}
-        {activeTab === 'partner' && (
-          <Stack>
-            <Title order={2}>Partnership</Title>
-            <Text c="dimmed">You are currently monitoring a pill taker's compliance.</Text>
-          </Stack>
-        )}
+        {/* Compliance Stats */}
+        <ComplianceStats pills={allPills} />
       </Stack>
-
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </Container>
   );
 }

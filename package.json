@@ -10,9 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "release": "standard-version",
-    "db:types": "npx supabase gen types typescript --project-id fxsmvpqbebukhqraxsja > src/types/database.types.ts",
-    "db:push": "npx supabase db push",
-    "db:reset": "npx supabase db reset"
+    "db:types": "supabase gen types typescript --local > src/types/database.types.ts",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset"
   },
   "dependencies": {
     "@mantine/core": "^8.3.11",

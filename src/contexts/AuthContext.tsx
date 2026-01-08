@@ -61,13 +61,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (userData?.role === 'pill_taker' && userData.active) {
         computedRole = 'pill_taker';
       } else if (userData?.role === 'partner') {
-        // Verify they have an active partnership as partner
-        const hasActivePartnership = (partnershipsData ?? []).some(
-          (p) => p.partner_id === userId && p.status === 'active'
-        );
-        if (hasActivePartnership) {
-          computedRole = 'partner';
-        }
+        computedRole = 'partner';
       }
 
       setActiveRole(computedRole);
@@ -128,7 +122,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     if (activeRole === 'partner') {
-      if (currentPath !== '/partner' && currentPath !== '/notifications') {
+      if (currentPath !== '/partner' && currentPath !== '/notifications' && currentPath !== '/enter-code') {
         navigate('/partner', { replace: true });
       }
       return;
