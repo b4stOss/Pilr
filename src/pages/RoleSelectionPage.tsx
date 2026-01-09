@@ -1,93 +1,126 @@
 // src/pages/RoleSelectionPage.tsx
-import { Box, Button, Center, Title, Text, Stack } from '@mantine/core';
+import { Box, Center, Title, Text, Stack, Paper, Group, ThemeIcon, UnstyledButton } from '@mantine/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { IconPill, IconHeart, IconChevronRight } from '@tabler/icons-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useOnboarding } from '../contexts/OnboardingContext';
 import { AppRole } from '../types';
 
 export function RoleSelectionPage() {
-  const { user, refreshProfile } = useAuth();
+  const { user } = useAuth();
+  const { setRole, data: onboardingData } = useOnboarding();
   const navigate = useNavigate();
-  const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedRole, setSelectedRole] = useState<AppRole | null>(onboardingData.role);
 
-  const setRoleAndNotifications = async (role: AppRole) => {
+  const handleRoleSelection = (role: AppRole) => {
     if (!user) return;
 
-    setIsProcessing(true);
-    setError(null);
     setSelectedRole(role);
+    setRole(role);
 
-    try {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-
-      if (role === 'pill_taker') {
-        // Update user with pill_taker role and default settings
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            role: 'pill_taker',
-            reminder_time: '09:00',
-            timezone,
-            active: true,
-          })
-          .eq('id', user.id);
-
-        if (updateError) throw updateError;
-      } else {
-        // Update user with partner role
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            role: 'partner',
-            active: true,
-          })
-          .eq('id', user.id);
-
-        if (updateError) throw updateError;
-      }
-
-      await refreshProfile();
-      navigate('/notifications');
-    } catch (err) {
-      console.error('Failed to set role:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save role');
-    } finally {
-      setIsProcessing(false);
-    }
+    // Navigate to next step based on role
+    navigate(role === 'pill_taker' ? '/setup-reminder' : '/notifications');
   };
 
   return (
-    <Center style={{ height: '100%' }}>
-      <Stack>
-        <Title order={2}>Choose Your Role</Title>
-
-        {error && <Text size="sm" c="red">{error}</Text>}
-
-        <Box>
-          <Button
-            color="black"
-            onClick={() => setRoleAndNotifications('pill_taker')}
-            loading={isProcessing && selectedRole === 'pill_taker'}
-            disabled={isProcessing && selectedRole !== 'pill_taker'}
-            fullWidth
-            mb="md"
-          >
-            Super Girl
-          </Button>
-
-          <Button
-            color="black"
-            onClick={() => setRoleAndNotifications('partner')}
-            loading={isProcessing && selectedRole === 'partner'}
-            disabled={isProcessing && selectedRole !== 'partner'}
-            fullWidth
-          >
-            Super Man
-          </Button>
+    <Center style={{ height: '100%', padding: '24px' }}>
+      <Stack align="center" gap="xl" style={{ maxWidth: 400, width: '100%' }}>
+        {/* Icon */}
+        <Box
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            backgroundColor: 'rgba(0, 0, 0, 0.05)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <IconHeart size={40} stroke={1.5} />
         </Box>
+
+        {/* Header */}
+        <Stack align="center" gap="xs">
+          <Title order={2} ta="center">Welcome to Pilr</Title>
+          <Text size="md" c="dimmed" ta="center">
+            Choose how you'll use the app. You can always change this later.
+          </Text>
+        </Stack>
+
+        {/* Role Cards */}
+        <Stack gap="md" w="100%">
+          {/* Pill Taker Card */}
+          <UnstyledButton
+            onClick={() => handleRoleSelection('pill_taker')}
+            style={{ width: '100%' }}
+          >
+            <Paper
+              p="lg"
+              radius="lg"
+              shadow="sm"
+              style={{
+                backgroundColor: '#fff',
+                border: selectedRole === 'pill_taker' ? '2px solid #000' : '1px solid #f0f0f0',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Group justify="space-between" wrap="nowrap">
+                <Group gap="md" wrap="nowrap">
+                  <ThemeIcon size={48} radius="xl" color="dark" variant="light">
+                    <IconPill size={24} />
+                  </ThemeIcon>
+                  <Box>
+                    <Text size="md" fw={600}>I take the pill</Text>
+                    <Text size="sm" c="dimmed">
+                      Get daily reminders and track your doses
+                    </Text>
+                  </Box>
+                </Group>
+                <IconChevronRight size={20} color="#aaa" />
+              </Group>
+            </Paper>
+          </UnstyledButton>
+
+          {/* Partner Card */}
+          <UnstyledButton
+            onClick={() => handleRoleSelection('partner')}
+            style={{ width: '100%' }}
+          >
+            <Paper
+              p="lg"
+              radius="lg"
+              shadow="sm"
+              style={{
+                backgroundColor: '#fff',
+                border: selectedRole === 'partner' ? '2px solid #000' : '1px solid #f0f0f0',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <Group justify="space-between" wrap="nowrap">
+                <Group gap="md" wrap="nowrap">
+                  <ThemeIcon size={48} radius="xl" color="red" variant="light">
+                    <IconHeart size={24} />
+                  </ThemeIcon>
+                  <Box>
+                    <Text size="md" fw={600}>I'm a supportive partner</Text>
+                    <Text size="sm" c="dimmed">
+                      Get notified if your partner forgets
+                    </Text>
+                  </Box>
+                </Group>
+                <IconChevronRight size={20} color="#aaa" />
+              </Group>
+            </Paper>
+          </UnstyledButton>
+        </Stack>
+
+        <Text size="xs" c="dimmed" ta="center">
+          Your choice helps us personalize your experience.
+        </Text>
       </Stack>
     </Center>
   );

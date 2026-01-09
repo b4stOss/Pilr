@@ -7,13 +7,78 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
+      invite_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          pill_taker_id: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          pill_taker_id: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          pill_taker_id?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invite_codes_pill_taker_id_fkey"
+            columns: ["pill_taker_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invite_codes_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_log: {
         Row: {
           error_message: string | null
@@ -150,6 +215,7 @@ export type Database = {
           active: boolean | null
           created_at: string | null
           email: string | null
+          first_name: string | null
           id: string
           push_subscription: Json | null
           reminder_time: string | null
@@ -161,6 +227,7 @@ export type Database = {
           active?: boolean | null
           created_at?: string | null
           email?: string | null
+          first_name?: string | null
           id: string
           push_subscription?: Json | null
           reminder_time?: string | null
@@ -172,6 +239,7 @@ export type Database = {
           active?: boolean | null
           created_at?: string | null
           email?: string | null
+          first_name?: string | null
           id?: string
           push_subscription?: Json | null
           reminder_time?: string | null
@@ -318,6 +386,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       notification_type: ["user_reminder", "partner_alert"],
@@ -327,3 +398,4 @@ export const Constants = {
     },
   },
 } as const
+

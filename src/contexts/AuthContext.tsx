@@ -4,6 +4,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContextType, PartnershipRow, UserRow, AppRole } from '../types';
+import { showErrorNotification } from '../utils';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -14,6 +15,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [profile, setProfile] = useState<UserRow | null>(null);
   const [partnerships, setPartnerships] = useState<PartnershipRow[]>([]);
   const [activeRole, setActiveRole] = useState<AppRole | null>(null);
@@ -29,6 +31,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
     } catch (error) {
       console.error('Failed to upsert user profile:', error);
+      showErrorNotification('Failed to initialize your profile. Please refresh the page.');
     }
   }, []);
 
@@ -61,83 +64,125 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (userData?.role === 'pill_taker' && userData.active) {
         computedRole = 'pill_taker';
       } else if (userData?.role === 'partner') {
-        // Verify they have an active partnership as partner
-        const hasActivePartnership = (partnershipsData ?? []).some(
-          (p) => p.partner_id === userId && p.status === 'active'
-        );
-        if (hasActivePartnership) {
-          computedRole = 'partner';
-        }
+        computedRole = 'partner';
       }
 
       setActiveRole(computedRole);
+      setProfileLoaded(true);
     } catch (error) {
       console.error('Error loading profile data:', error);
+      showErrorNotification('Failed to load your profile. Please refresh the page.');
+      setProfileLoaded(true); // Still mark as loaded to avoid infinite loading
     }
   }, []);
 
+  // Auth state management - following Supabase best practices
   useEffect(() => {
-    let isMounted = true;
-
-    // Utilise onAuthStateChange comme source de vérité (recommandé par Supabase)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!isMounted) return;
-
-      if (session?.user) {
-        setUser(session.user);
-        // Charger le profil en arrière-plan, ne pas bloquer le loading
-        ensureUserRow(session.user).then(() => {
-          if (isMounted) fetchProfile(session.user.id);
-        });
-      } else {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') {
+        // Handle initial session on page load
+        if (session?.user) {
+          setUser(session.user);
+          // Load profile in a separate effect to avoid async in callback
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      } else if (event === 'SIGNED_IN') {
+        setUser(session?.user ?? null);
+        setProfileLoaded(false);
+      } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setProfile(null);
         setPartnerships([]);
         setActiveRole(null);
         setHasPushSubscription(false);
+        setProfileLoaded(false);
+      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        // Update user but don't reload profile
+        if (session?.user) {
+          setUser(session.user);
+        }
       }
-      // Loading terminé dès qu'on sait si user existe ou non
-      setLoading(false);
     });
 
     return () => {
-      isMounted = false;
       subscription.unsubscribe();
     };
-  }, [ensureUserRow, fetchProfile]);
+  }, []);
+
+  // Load profile when user changes
+  useEffect(() => {
+    if (!user) {
+      setProfileLoaded(true); // No user = nothing to load
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      try {
+        await ensureUserRow(user);
+        if (!cancelled) {
+          await fetchProfile(user.id);
+        }
+      } catch (error) {
+        console.error('[Auth] Error loading profile:', error);
+      } finally {
+        if (!cancelled) {
+          setProfileLoaded(true);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, ensureUserRow, fetchProfile]);
 
   useEffect(() => {
-    if (loading || !user) return;
+    // Wait for both auth and profile to be loaded
+    if (loading || !profileLoaded || !user) return;
 
     const currentPath = location.pathname;
-    const permissionGranted =
-      typeof Notification !== 'undefined' ? Notification.permission === 'granted' : false;
 
+    // Onboarding pages - let them manage their own navigation
+    const onboardingPages = ['/role', '/setup-reminder', '/notifications'];
+    const isOnOnboardingPage = onboardingPages.includes(currentPath);
+
+    // If user hasn't completed onboarding (no role in DB)
     if (!activeRole) {
-      if (currentPath !== '/role') {
+      // Redirect to /role if not already on an onboarding page
+      if (!isOnOnboardingPage) {
         navigate('/role', { replace: true });
       }
+      // Let onboarding pages handle their own logic
       return;
     }
 
-    if ((!hasPushSubscription || !permissionGranted) && currentPath !== '/notifications') {
-      navigate('/notifications', { replace: true });
+    // User has completed onboarding - apply post-onboarding routing
+
+    // Allow access to onboarding pages (for potential settings changes later)
+    if (isOnOnboardingPage) {
       return;
     }
 
+    // Navigate to appropriate home page based on role
     if (activeRole === 'partner') {
-      if (currentPath !== '/partner' && currentPath !== '/notifications') {
+      if (currentPath !== '/partner' && currentPath !== '/enter-code') {
         navigate('/partner', { replace: true });
       }
       return;
     }
 
-    if (activeRole === 'pill_taker' && currentPath !== '/home' && currentPath !== '/notifications') {
+    if (activeRole === 'pill_taker' && currentPath !== '/home') {
       navigate('/home', { replace: true });
     }
-  }, [activeRole, hasPushSubscription, loading, navigate, location.pathname, user]);
+  }, [activeRole, profileLoaded, loading, navigate, location.pathname, user]);
 
   const signInWithGoogle = async () => {
     try {
@@ -166,9 +211,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const refreshProfile = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
     await fetchProfile(user.id);
-    setLoading(false);
   }, [fetchProfile, user]);
 
   const contextValue: AuthContextType = {

@@ -1,66 +1,53 @@
 // src/hooks/usePartnerManagement.ts
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { PartnershipRow, UserRow } from '../types';
+import { PartnerUserSelect, PartnershipWithPartner } from '../types';
 
 interface UsePartnerManagementProps {
   userId: string;
 }
 
 interface UsePartnerManagementReturn {
-  availablePartners: UserRow[];
-  activePartner: UserRow | null;
+  activePartner: PartnerUserSelect | null;
   isLoading: boolean;
   error: string | null;
-  addPartner: (partnerId: string) => Promise<void>;
-  removePartner: (partnerId: string) => Promise<void>;
+  removePartner: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 export function usePartnerManagement({ userId }: UsePartnerManagementProps): UsePartnerManagementReturn {
-  const [availablePartners, setAvailablePartners] = useState<UserRow[]>([]);
-  const [activePartner, setActivePartner] = useState<UserRow | null>(null);
+  const [activePartner, setActivePartner] = useState<PartnerUserSelect | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
 
-      // Fetch partnerships for this pill taker
-      const { data: partnershipRows, error: partnershipsError } = await supabase
+      // Fetch active partnership with partner profile
+      const { data, error: fetchError } = await supabase
         .from('partnerships')
-        .select('*')
-        .eq('pill_taker_id', userId);
+        .select('partner_id, status, users!partnerships_partner_id_fkey(id, email, push_subscription)')
+        .eq('pill_taker_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
 
-      if (partnershipsError) throw partnershipsError;
-
-      const activeLink = (partnershipRows as PartnershipRow[] | null)?.find((p) => p.status === 'active') ?? null;
-
-      // Fetch all users except the current pill taker
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('*')
-        .neq('id', userId);
-
-      if (usersError) throw usersError;
-
-      const typedUsers = (usersData as UserRow[] | null) ?? [];
-
-      if (activeLink) {
-        const partnerProfile = typedUsers.find((user) => user.id === activeLink.partner_id) || null;
-        setActivePartner(partnerProfile);
-        setAvailablePartners(
-          typedUsers.filter((user) => user.push_subscription && user.id !== activeLink.partner_id),
-        );
-      } else {
-        setActivePartner(null);
-        setAvailablePartners(typedUsers.filter((user) => Boolean(user.push_subscription)));
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
       }
+
+      // Type assertion for Supabase relation query result
+      const partnership = data as PartnershipWithPartner | null;
+      setActivePartner(partnership?.users ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch partners');
+      console.error('Error fetching partner:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch partner');
     } finally {
       setIsLoading(false);
     }
@@ -70,33 +57,9 @@ export function usePartnerManagement({ userId }: UsePartnerManagementProps): Use
     fetchData();
   }, [fetchData]);
 
-  const addPartner = async (partnerId: string) => {
-    try {
-      setError(null);
+  const removePartner = useCallback(async () => {
+    if (!userId || !activePartner) return;
 
-      // Delete any existing partnership for this pill_taker (1-1 constraint)
-      await supabase
-        .from('partnerships')
-        .delete()
-        .eq('pill_taker_id', userId);
-
-      // Create new active partnership
-      const { error: insertError } = await supabase.from('partnerships').insert({
-        pill_taker_id: userId,
-        partner_id: partnerId,
-        status: 'active',
-      });
-
-      if (insertError) throw insertError;
-
-      // Refresh data
-      await fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add partner');
-    }
-  };
-
-  const removePartner = async (partnerId: string) => {
     try {
       setError(null);
 
@@ -105,23 +68,23 @@ export function usePartnerManagement({ userId }: UsePartnerManagementProps): Use
         .from('partnerships')
         .delete()
         .eq('pill_taker_id', userId)
-        .eq('partner_id', partnerId);
+        .eq('partner_id', activePartner.id);
 
       if (deleteError) throw deleteError;
 
-      // Refresh data
-      await fetchData();
+      // Clear local state
+      setActivePartner(null);
     } catch (err) {
+      console.error('Error removing partner:', err);
       setError(err instanceof Error ? err.message : 'Failed to remove partner');
     }
-  };
+  }, [userId, activePartner]);
 
   return {
-    availablePartners,
     activePartner,
     isLoading,
     error,
-    addPartner,
     removePartner,
+    refresh: fetchData,
   };
 }

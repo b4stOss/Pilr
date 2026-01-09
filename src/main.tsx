@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { MantineProvider, createTheme, DEFAULT_THEME } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import { BrowserRouter } from 'react-router-dom';
+import '@mantine/notifications/styles.css';
 
 const theme = createTheme({
   fontFamily: 'Inter, sans-serif',
@@ -83,6 +85,7 @@ registerSW({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="light">
+      <Notifications position="top-center" zIndex={1000} />
       <BrowserRouter>
         <App />
       </BrowserRouter>

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DateTime } from 'luxon';
 import { supabase } from '../lib/supabase';
-import { PillTrackingRow, PillStatus } from '../types';
+import { PillTrackingRow } from '../types';
 
 interface UsePillTrackingProps {
   userId: string;
@@ -17,7 +17,7 @@ interface UsePillTrackingReturn {
   streak: number;
   isLoading: boolean;
   error: string | null;
-  markPillStatus: (pillId: string, status: PillStatus) => Promise<void>;
+  markTodayAsTaken: (reminderTime: string) => Promise<void>;
   refreshPills: () => Promise<void>;
 }
 
@@ -119,58 +119,77 @@ export function usePillTracking({ userId, daysToFetch = 60 }: UsePillTrackingPro
     fetchPills();
   }, [fetchPills]);
 
-  const markPillStatus = async (pillId: string, status: PillStatus) => {
+  // Mark today's pill as taken - creates entry if needed, updates if exists
+  const markTodayAsTaken = async (reminderTime: string) => {
+    if (!userId || !reminderTime) return;
+
     try {
       setError(null);
-      const nowIso = DateTime.now().toUTC().toISO();
+      const now = DateTime.now();
+      const nowIso = now.toUTC().toISO();
+      const dateKey = now.toFormat('yyyy-MM-dd');
 
-      // Find current pill to check its status
-      const currentPill = allPills.find((p) => p.id === pillId);
-      const currentStatus = currentPill?.status;
+      // Check if we have an existing pill for today
+      const existingPill = todayPills[0];
 
-      // If marking as taken but was missed/late_taken, use late_taken instead
-      let finalStatus = status;
-      if (status === 'taken' && (currentStatus === 'missed' || currentStatus === 'late_taken')) {
-        finalStatus = 'late_taken';
+      if (existingPill) {
+        // Update existing entry
+        const finalStatus = existingPill.partner_alerted ? 'late_taken' : 'taken';
+        const updates: Partial<PillTrackingRow> = {
+          status: finalStatus,
+          taken_at: nowIso,
+          updated_at: nowIso,
+        };
+
+        const { error: updateError } = await supabase
+          .from('pill_tracking')
+          .update(updates)
+          .eq('id', existingPill.id);
+
+        if (updateError) throw updateError;
+
+        // Update local state
+        const updatedPill = { ...existingPill, ...updates };
+        setTodayPills([updatedPill as PillTrackingRow]);
+        setAllPills((prev) =>
+          prev.map((p) => (p.id === existingPill.id ? (updatedPill as PillTrackingRow) : p))
+        );
+        setPillsByDate((prevMap) => {
+          const newMap = new Map(prevMap);
+          newMap.set(dateKey, [updatedPill as PillTrackingRow]);
+          return newMap;
+        });
+      } else {
+        // Create new entry
+        const [hours, minutes] = reminderTime.split(':').map(Number);
+        const scheduledTime = now.startOf('day').set({ hour: hours, minute: minutes }).toUTC().toISO();
+
+        const { data, error: insertError } = await supabase
+          .from('pill_tracking')
+          .insert({
+            user_id: userId,
+            scheduled_time: scheduledTime,
+            status: 'taken',
+            taken_at: nowIso,
+            reminder_count: 0,
+            partner_alerted: false,
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        const newPill = data as PillTrackingRow;
+        setTodayPills([newPill]);
+        setAllPills((prev) => [newPill, ...prev]);
+        setPillsByDate((prevMap) => {
+          const newMap = new Map(prevMap);
+          newMap.set(dateKey, [newPill]);
+          return newMap;
+        });
       }
-
-      const updates: Partial<PillTrackingRow> = {
-        status: finalStatus,
-        updated_at: nowIso,
-      };
-
-      if (finalStatus === 'taken' || finalStatus === 'late_taken') {
-        updates.taken_at = nowIso;
-      }
-
-      const { error: updateError } = await supabase
-        .from('pill_tracking')
-        .update(updates)
-        .eq('id', pillId);
-
-      if (updateError) throw updateError;
-
-      // Update local state for today, history, all pills, and pillsByDate
-      const updatePills = (pills: PillTrackingRow[]) =>
-        pills.map((pill) => (pill.id === pillId ? { ...pill, ...updates } : pill));
-
-      setTodayPills(updatePills);
-      setHistoryPills(updatePills);
-      setAllPills(updatePills);
-
-      // Update pillsByDate map
-      setPillsByDate((prevMap) => {
-        const newMap = new Map(prevMap);
-        for (const [dateKey, pills] of newMap) {
-          const updatedPills = pills.map((pill) =>
-            pill.id === pillId ? { ...pill, ...updates } : pill
-          );
-          newMap.set(dateKey, updatedPills);
-        }
-        return newMap;
-      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update pill status');
+      setError(err instanceof Error ? err.message : 'Failed to mark pill as taken');
     }
   };
 
@@ -182,7 +201,7 @@ export function usePillTracking({ userId, daysToFetch = 60 }: UsePillTrackingPro
     streak,
     isLoading,
     error,
-    markPillStatus,
+    markTodayAsTaken,
     refreshPills: fetchPills,
   };
 }

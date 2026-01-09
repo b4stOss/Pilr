@@ -5,7 +5,9 @@ import { LoginPage } from '../pages/LoginPage';
 import { MainLayout } from '../layouts/MainLayout';
 import { useAuth } from '../contexts/AuthContext';
 import { PartnerPage } from '../pages/PartnerPage';
+import { EnterCodePage } from '../pages/EnterCodePage';
 import { RoleSelectionPage } from '../pages/RoleSelectionPage';
+import { ReminderSetupPage } from '../pages/ReminderSetupPage';
 import { NotificationPermissionPage } from '../pages/NotificationPermissionPage';
 
 // Layout wrapper component
@@ -48,6 +50,16 @@ export const routes: RouteObject[] = [
     ),
   },
   {
+    path: '/setup-reminder',
+    element: (
+      <RequireAuth>
+        <WithLayout>
+          <ReminderSetupPage />
+        </WithLayout>
+      </RequireAuth>
+    ),
+  },
+  {
     path: '/notifications',
     element: (
       <RequireAuth>
@@ -73,6 +85,16 @@ export const routes: RouteObject[] = [
       <RequireAuth>
         <WithLayout>
           <PartnerPage />
+        </WithLayout>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/enter-code',
+    element: (
+      <RequireAuth>
+        <WithLayout>
+          <EnterCodePage />
         </WithLayout>
       </RequireAuth>
     ),

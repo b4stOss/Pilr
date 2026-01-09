@@ -1,5 +1,5 @@
-/* Ripple button container */
-.rippleContainer {
+/* Button container */
+.buttonContainer {
   position: relative;
   display: flex;
   align-items: center;
@@ -7,43 +7,27 @@
   padding: 40px;
 }
 
-/* Outer glow effect */
-.rippleGlow {
+/* Subtle glow effect - soft meditation style */
+.buttonGlow {
   position: absolute;
   width: 280px;
   height: 280px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 0, 0, 0.03) 0%, transparent 70%);
-  filter: blur(20px);
+  background: rgba(19, 91, 236, 0.08);
+  filter: blur(40px);
   transition: all 0.5s ease;
+  animation: breathing 4s ease-in-out infinite;
 }
 
-/* Concentric rings - creates the "water ripple" effect */
-.rippleRing {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.04);
-  transition: all 0.4s ease;
-}
-
-.rippleRing1 {
-  width: 260px;
-  height: 260px;
-  border-color: rgba(0, 0, 0, 0.03);
-}
-
-.rippleRing2 {
-  width: 230px;
-  height: 230px;
-  border-color: rgba(0, 0, 0, 0.05);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-}
-
-.rippleRing3 {
-  width: 215px;
-  height: 215px;
-  border-color: rgba(0, 0, 0, 0.06);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+@keyframes breathing {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.5;
+  }
 }
 
 /* Main button */
@@ -67,6 +51,10 @@
   gap: 4px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Prevent iOS text selection on long press */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .mainButton:hover {
@@ -107,44 +95,15 @@
     0 24px 48px rgba(52, 211, 153, 0.15);
 }
 
-/* Hover effect on rings */
-.rippleContainer:hover .rippleRing1 {
-  transform: scale(1.05);
-  border-color: rgba(0, 0, 0, 0.04);
-}
-
-.rippleContainer:hover .rippleRing2 {
-  transform: scale(1.03);
-  border-color: rgba(0, 0, 0, 0.06);
-}
-
-.rippleContainer:hover .rippleRing3 {
-  transform: scale(1.02);
-  border-color: rgba(0, 0, 0, 0.07);
-}
-
-.rippleContainer:hover .rippleGlow {
+/* Hover effect on glow */
+.buttonContainer:hover .buttonGlow {
   transform: scale(1.1);
-  background: radial-gradient(circle, rgba(0, 0, 0, 0.05) 0%, transparent 70%);
+  background: rgba(0, 0, 0, 0.05);
 }
 
-/* Taken state rings */
-.rippleContainerTaken .rippleRing1 {
-  border-color: rgba(52, 211, 153, 0.1);
-}
-
-.rippleContainerTaken .rippleRing2 {
-  border-color: rgba(52, 211, 153, 0.15);
-  box-shadow: 0 4px 20px rgba(52, 211, 153, 0.05);
-}
-
-.rippleContainerTaken .rippleRing3 {
-  border-color: rgba(52, 211, 153, 0.2);
-  box-shadow: 0 2px 10px rgba(52, 211, 153, 0.08);
-}
-
-.rippleContainerTaken .rippleGlow {
-  background: radial-gradient(circle, rgba(52, 211, 153, 0.1) 0%, transparent 70%);
+/* Taken state glow */
+.buttonContainerTaken .buttonGlow {
+  background: rgba(52, 211, 153, 0.15);
 }
 
 /* Button content animation */
@@ -214,21 +173,44 @@
   opacity: 0;
 }
 
-/* Animate rings when holding */
-.rippleContainer:has(.mainButtonHolding) .rippleRing1 {
-  border-color: rgba(52, 211, 153, 0.15);
-  transform: scale(1.02);
+/* Animate glow when holding */
+.buttonContainer:has(.mainButtonHolding) .buttonGlow {
+  transform: scale(1.05);
+  background: rgba(52, 211, 153, 0.12);
 }
 
-.rippleContainer:has(.mainButtonHolding) .rippleRing2 {
-  border-color: rgba(52, 211, 153, 0.2);
-  transform: scale(1.01);
+/* Status badge */
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background-color: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
 }
 
-.rippleContainer:has(.mainButtonHolding) .rippleRing3 {
-  border-color: rgba(52, 211, 153, 0.25);
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  animation: pulse 2s infinite;
 }
 
-.rippleContainer:has(.mainButtonHolding) .rippleGlow {
-  background: radial-gradient(circle, rgba(52, 211, 153, 0.08) 0%, transparent 70%);
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.statusText {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #dc2626;
 }

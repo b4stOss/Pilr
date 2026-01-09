@@ -10,12 +10,56 @@ export type UserRow = Tables<'users'>;
 export type PillTrackingRow = Tables<'pill_tracking'>;
 export type PartnershipRow = Tables<'partnerships'>;
 export type NotificationLogRow = Tables<'notification_log'>;
+export type InviteCodeRow = Tables<'invite_codes'>;
 
 // Enum types
 export type AppRole = Enums<'user_role'>;
 export type PillStatus = Enums<'pill_status'>;
 export type PartnerStatus = Enums<'partner_status'>;
 export type NotificationType = Enums<'notification_type'>;
+
+// =============================================================================
+// SUPABASE QUERY TYPES (for queries with relations)
+// =============================================================================
+
+/**
+ * User fields commonly selected in partnership queries
+ */
+export type PartnerUserSelect = Pick<UserRow, 'id' | 'email' | 'push_subscription'>;
+
+/**
+ * Pill taker fields commonly selected in partnership queries
+ */
+export type PillTakerUserSelect = Pick<UserRow, 'id' | 'email' | 'first_name'>;
+
+/**
+ * Partnership with partner user data (for pill_taker viewing their partner)
+ * Used in: usePartnerManagement hook
+ */
+export interface PartnershipWithPartner {
+  partner_id: string;
+  status: PartnerStatus | null;
+  users: PartnerUserSelect;
+}
+
+/**
+ * Partnership with pill_taker user data (for partner viewing their pill_taker)
+ * Used in: PartnerPage
+ */
+export interface PartnershipWithPillTaker {
+  pill_taker_id: string;
+  status: PartnerStatus | null;
+  users: PillTakerUserSelect;
+}
+
+// =============================================================================
+// UI STATE TYPES
+// =============================================================================
+
+/**
+ * Aggregated pill status for a day (includes 'no_pills' for empty days)
+ */
+export type AggregatedPillStatus = PillStatus | 'no_pills';
 
 // =============================================================================
 // BUSINESS TYPES (app-specific, not from DB)
@@ -28,23 +72,6 @@ export interface PushSubscriptionData {
     p256dh: string;
     auth: string;
   };
-}
-
-// Notification payload for push messages
-export interface NotificationPayload {
-  title: string;
-  body: string;
-  url?: string;
-  actions?: Array<{
-    action: string;
-    title: string;
-  }>;
-}
-
-// Generic API response wrapper
-export interface ApiResponse<T> {
-  data: T | null;
-  error: Error | null;
 }
 
 // =============================================================================
