@@ -1,28 +1,14 @@
 import { useState } from 'react';
 import { Paper, Text, Button, Stack, Group, Box, CopyButton, Loader, TextInput } from '@mantine/core';
 import { IconCopy, IconCheck, IconRefresh } from '@tabler/icons-react';
-import { DateTime } from 'luxon';
 import { useInviteCode } from '../hooks/useInviteCode';
 import { supabase } from '../lib/supabase';
+import { formatTimeRemaining } from '../utils';
 
 interface InviteCodeCardProps {
   userId: string;
   firstName: string | null;
   onFirstNameSaved: () => void;
-}
-
-function formatTimeRemaining(expiresAt: string): string {
-  const now = DateTime.now();
-  const expires = DateTime.fromISO(expiresAt);
-  const diff = expires.diff(now, ['hours', 'minutes']);
-
-  const hours = Math.floor(diff.hours);
-  const minutes = Math.floor(diff.minutes);
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m remaining`;
-  }
-  return `${minutes}m remaining`;
 }
 
 export function InviteCodeCard({ userId, firstName, onFirstNameSaved }: InviteCodeCardProps) {

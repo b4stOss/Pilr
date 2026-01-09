@@ -18,6 +18,7 @@
     "@mantine/core": "^8.3.11",
     "@mantine/dates": "^8.3.11",
     "@mantine/hooks": "^8.3.11",
+    "@mantine/notifications": "^8.3.12",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.48.0",

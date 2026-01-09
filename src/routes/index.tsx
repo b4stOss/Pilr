@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { PartnerPage } from '../pages/PartnerPage';
 import { EnterCodePage } from '../pages/EnterCodePage';
 import { RoleSelectionPage } from '../pages/RoleSelectionPage';
+import { ReminderSetupPage } from '../pages/ReminderSetupPage';
 import { NotificationPermissionPage } from '../pages/NotificationPermissionPage';
 
 // Layout wrapper component
@@ -44,6 +45,16 @@ export const routes: RouteObject[] = [
       <RequireAuth>
         <WithLayout>
           <RoleSelectionPage />
+        </WithLayout>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/setup-reminder',
+    element: (
+      <RequireAuth>
+        <WithLayout>
+          <ReminderSetupPage />
         </WithLayout>
       </RequireAuth>
     ),

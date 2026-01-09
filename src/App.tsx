@@ -1,6 +1,7 @@
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import { AuthProvider } from './contexts/AuthContext';
+import { OnboardingProvider } from './contexts/OnboardingContext';
 import { routes } from './routes';
 import { useRoutes } from 'react-router-dom';
 import { Suspense } from 'react';
@@ -15,15 +16,17 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Suspense
-          fallback={
-            <Center style={{ height: '100vh' }}>
-              <Loader color="black" />
-            </Center>
-          }
-        >
-          <Router />
-        </Suspense>
+        <OnboardingProvider>
+          <Suspense
+            fallback={
+              <Center style={{ height: '100vh' }}>
+                <Loader color="black" />
+              </Center>
+            }
+          >
+            <Router />
+          </Suspense>
+        </OnboardingProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

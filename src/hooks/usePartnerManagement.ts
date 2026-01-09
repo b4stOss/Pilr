@@ -1,14 +1,14 @@
 // src/hooks/usePartnerManagement.ts
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { UserRow } from '../types';
+import { PartnerUserSelect, PartnershipWithPartner } from '../types';
 
 interface UsePartnerManagementProps {
   userId: string;
 }
 
 interface UsePartnerManagementReturn {
-  activePartner: UserRow | null;
+  activePartner: PartnerUserSelect | null;
   isLoading: boolean;
   error: string | null;
   removePartner: () => Promise<void>;
@@ -16,7 +16,7 @@ interface UsePartnerManagementReturn {
 }
 
 export function usePartnerManagement({ userId }: UsePartnerManagementProps): UsePartnerManagementReturn {
-  const [activePartner, setActivePartner] = useState<UserRow | null>(null);
+  const [activePartner, setActivePartner] = useState<PartnerUserSelect | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,12 +42,9 @@ export function usePartnerManagement({ userId }: UsePartnerManagementProps): Use
         throw fetchError;
       }
 
-      if (data?.users) {
-        const userData = data.users as unknown as UserRow;
-        setActivePartner(userData);
-      } else {
-        setActivePartner(null);
-      }
+      // Type assertion for Supabase relation query result
+      const partnership = data as PartnershipWithPartner | null;
+      setActivePartner(partnership?.users ?? null);
     } catch (err) {
       console.error('Error fetching partner:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch partner');

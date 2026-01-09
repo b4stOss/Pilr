@@ -1,14 +1,12 @@
 import { Paper, Text, Group, Box, ThemeIcon } from '@mantine/core';
 import { IconCheck, IconClock, IconX, IconAlertTriangle } from '@tabler/icons-react';
 import { DateTime } from 'luxon';
-import { PillTrackingRow } from '../types';
+import { PillTrackingRow, AggregatedPillStatus } from '../types';
 
 interface TodayStatusCardProps {
   pills: PillTrackingRow[];
   name: string;
 }
-
-type AggregatedStatus = 'taken' | 'pending' | 'missed' | 'late_taken' | 'no_pills';
 
 interface StatusConfig {
   icon: typeof IconCheck;
@@ -17,7 +15,7 @@ interface StatusConfig {
   label: string;
 }
 
-const STATUS_CONFIG: Record<AggregatedStatus, StatusConfig> = {
+const STATUS_CONFIG: Record<AggregatedPillStatus, StatusConfig> = {
   taken: {
     icon: IconCheck,
     color: '#10B981',
@@ -50,7 +48,7 @@ const STATUS_CONFIG: Record<AggregatedStatus, StatusConfig> = {
   },
 };
 
-function getAggregatedStatus(pills: PillTrackingRow[]): AggregatedStatus {
+function getAggregatedStatus(pills: PillTrackingRow[]): AggregatedPillStatus {
   if (pills.length === 0) return 'no_pills';
 
   const statuses = pills.map((p) => p.status);
@@ -64,7 +62,7 @@ function getAggregatedStatus(pills: PillTrackingRow[]): AggregatedStatus {
   return 'pending';
 }
 
-function getTimeLabel(pills: PillTrackingRow[], status: AggregatedStatus): string {
+function getTimeLabel(pills: PillTrackingRow[], status: AggregatedPillStatus): string {
   if (pills.length === 0) return '';
 
   if (status === 'taken' || status === 'late_taken') {
@@ -111,7 +109,7 @@ export function TodayStatusCard({ pills, name }: TodayStatusCardProps) {
       }}
     >
       <Box style={{ position: 'relative', zIndex: 1 }}>
-        <Text size="lg" fw={600} mb={8} c="dark">
+        <Text size="lg" fw={600} mb="sm" c="black">
           {name}'s Pill Today
         </Text>
 

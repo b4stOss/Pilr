@@ -172,14 +172,6 @@ export function EnterCodePage() {
             Link Account
           </Button>
 
-          <Button
-            variant="subtle"
-            color="gray"
-            size="sm"
-            onClick={() => navigate(-1)}
-          >
-            Where do I find this code?
-          </Button>
         </Stack>
       </Stack>
     </Container>

@@ -71,7 +71,6 @@ export function useInviteCode({ userId }: UseInviteCodeProps): UseInviteCodeRetu
 
     try {
       setError(null);
-      setIsLoading(true);
 
       // Delete any existing unused codes for this user
       await supabase
@@ -119,8 +118,6 @@ export function useInviteCode({ userId }: UseInviteCodeProps): UseInviteCodeRetu
     } catch (err) {
       console.error('Error generating invite code:', err);
       setError('Failed to generate invite code');
-    } finally {
-      setIsLoading(false);
     }
   }, [userId]);
 

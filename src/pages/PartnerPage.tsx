@@ -18,17 +18,13 @@ import { CalendarHistory } from '../components/CalendarHistory';
 import { ComplianceStats } from '../components/ComplianceStats';
 import { TodayStatusCard } from '../components/TodayStatusCard';
 import Header from '../components/HeaderComponent';
-
-interface LinkedUser {
-  id: string;
-  email: string | null;
-  firstName: string | null;
-}
+import { PillTakerUserSelect, PartnershipWithPillTaker } from '../types';
+import { getDisplayName } from '../utils';
 
 export function PartnerPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [linkedUser, setLinkedUser] = useState<LinkedUser | null>(null);
+  const [linkedUser, setLinkedUser] = useState<PillTakerUserSelect | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +50,7 @@ export function PartnerPage() {
         setError(null);
 
         // Fetch partnership with pill_taker profile
-        const { data, error } = await supabase
+        const { data, error: fetchError } = await supabase
           .from('partnerships')
           .select('pill_taker_id, status, users!partnerships_pill_taker_id_fkey(id, email, first_name)')
           .eq('partner_id', user.id)
@@ -62,19 +58,14 @@ export function PartnerPage() {
           .maybeSingle();
 
         if (mounted) {
-          if (error && error.code !== 'PGRST116') {
-            console.error('Error fetching linked user:', error);
+          if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error('Error fetching linked user:', fetchError);
             setError('Failed to fetch user link');
           }
 
-          if (data?.users) {
-            const userData = data.users as unknown as { id: string; email: string | null; first_name: string | null };
-            setLinkedUser({
-              id: userData.id,
-              email: userData.email,
-              firstName: userData.first_name,
-            });
-          }
+          // Type assertion for Supabase relation query result
+          const partnership = data as PartnershipWithPillTaker | null;
+          setLinkedUser(partnership?.users ?? null);
           setIsLoading(false);
         }
       } catch (err) {
@@ -92,16 +83,6 @@ export function PartnerPage() {
       mounted = false;
     };
   }, [user]);
-
-  // Get display name: prefer first_name, fallback to email
-  const getDisplayName = (user: LinkedUser): string => {
-    if (user.firstName) return user.firstName;
-    if (user.email) {
-      const name = user.email.split('@')[0];
-      return name.charAt(0).toUpperCase() + name.slice(1);
-    }
-    return 'User';
-  };
 
   if (isLoading) {
     return (
@@ -185,14 +166,6 @@ export function PartnerPage() {
             Enter Invitation Code
           </Button>
 
-          {/* Help link */}
-          <Button
-            variant="subtle"
-            color="gray"
-            size="sm"
-          >
-            Where do I find my code?
-          </Button>
         </Stack>
       </Container>
     );

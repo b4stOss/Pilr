@@ -1,17 +1,15 @@
-import { useState, useRef, useCallback } from 'react';
 import { Stack, Text, Paper, Group, Box, UnstyledButton, ActionIcon, Title } from '@mantine/core';
 import { IconCheck, IconFlame, IconEdit } from '@tabler/icons-react';
 import { DateTime } from 'luxon';
 import { PillTrackingRow } from '../types';
+import { useHoldToConfirm } from '../hooks/useHoldToConfirm';
 import styles from './TodayView.module.css';
-
-const HOLD_DURATION = 1200; // 1.2 seconds to confirm
 
 interface TodayViewProps {
   pill: PillTrackingRow | null;
   reminderTime: string | null;
   streak: number;
-  onMarkTaken: (pillId: string) => Promise<void>;
+  onMarkTaken: () => Promise<void>;
   onEditReminder: () => void;
 }
 
@@ -21,72 +19,17 @@ export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditRemin
 
   const status = pill?.status ?? 'pending';
   const isTaken = status === 'taken' || status === 'late_taken';
-  const canMarkTaken = !isTaken;
 
   const displayTime = reminderTime
     ? DateTime.fromSQL(reminderTime).toFormat('HH:mm')
     : '--:--';
   const takenTime = pill?.taken_at ? DateTime.fromISO(pill.taken_at).toFormat('HH:mm') : null;
 
-  const handleMarkTaken = useCallback(() => {
-    if (pill && canMarkTaken) {
-      onMarkTaken(pill.id);
-    }
-  }, [pill, canMarkTaken, onMarkTaken]);
-
-  // Hold to confirm state
-  const [isHolding, setIsHolding] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number>(0);
-  const isHoldingRef = useRef(false); // Ref to track holding state for async callbacks
-
-  const clearTimers = useCallback(() => {
-    if (holdTimerRef.current) {
-      clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-  }, []);
-
-  const endHold = useCallback(() => {
-    isHoldingRef.current = false; // Mark as not holding FIRST
-    setIsHolding(false);
-    setProgress(0);
-    clearTimers();
-  }, [clearTimers]);
-
-  const startHold = useCallback(() => {
-    if (!canMarkTaken) return;
-
-    isHoldingRef.current = true; // Mark as holding
-    setIsHolding(true);
-    setProgress(0);
-    startTimeRef.current = Date.now();
-
-    // Update progress every 16ms (~60fps)
-    progressIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTimeRef.current;
-      const newProgress = Math.min((elapsed / HOLD_DURATION) * 100, 100);
-      setProgress(newProgress);
-    }, 16);
-
-    // Trigger action after hold duration
-    holdTimerRef.current = setTimeout(() => {
-      // Only trigger if still holding (not cancelled)
-      if (!isHoldingRef.current) return;
-
-      handleMarkTaken();
-      isHoldingRef.current = false;
-      setIsHolding(false);
-      setProgress(0);
-      clearTimers();
-    }, HOLD_DURATION);
-  }, [canMarkTaken, handleMarkTaken, clearTimers]);
+  const { isHolding, progress, startHold, endHold } = useHoldToConfirm({
+    duration: 1200,
+    onConfirm: onMarkTaken,
+    disabled: isTaken,
+  });
 
   // SVG circle properties
   const circleRadius = 96;
@@ -118,17 +61,20 @@ export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditRemin
         </Paper>
       )}
 
-      {/* Main Button with Ripple Effect */}
-      <Box
-        className={`${styles.rippleContainer} ${isTaken ? styles.rippleContainerTaken : ''}`}
-      >
-        {/* Outer glow */}
-        <Box className={styles.rippleGlow} />
+      {/* Status Badge - Not taken yet */}
+      {!isTaken && (
+        <Box className={styles.statusBadge}>
+          <Box className={styles.statusDot} />
+          <span className={styles.statusText}>Not taken yet</span>
+        </Box>
+      )}
 
-        {/* Concentric rings */}
-        <Box className={`${styles.rippleRing} ${styles.rippleRing1}`} />
-        <Box className={`${styles.rippleRing} ${styles.rippleRing2}`} />
-        <Box className={`${styles.rippleRing} ${styles.rippleRing3}`} />
+      {/* Main Button */}
+      <Box
+        className={`${styles.buttonContainer} ${isTaken ? styles.buttonContainerTaken : ''}`}
+      >
+        {/* Soft glow */}
+        <Box className={styles.buttonGlow} />
 
         {/* Progress ring SVG */}
         {!isTaken && (
@@ -138,14 +84,15 @@ export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditRemin
             height="200"
             viewBox="0 0 200 200"
           >
-            {/* Background circle */}
+            {/* Background circle - only visible when holding */}
             <circle
               cx="100"
               cy="100"
               r={circleRadius}
               fill="none"
-              stroke="rgba(0, 0, 0, 0.05)"
+              stroke={isHolding ? 'rgba(0, 0, 0, 0.08)' : 'transparent'}
               strokeWidth="4"
+              style={{ transition: 'stroke 0.2s ease' }}
             />
             {/* Progress circle */}
             <circle
@@ -171,7 +118,7 @@ export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditRemin
           onMouseLeave={endHold}
           onTouchStart={startHold}
           onTouchEnd={endHold}
-          disabled={!canMarkTaken}
+          disabled={isTaken || !pill}
           className={`${styles.mainButton} ${isTaken ? styles.mainButtonTaken : ''} ${isHolding ? styles.mainButtonHolding : ''}`}
         >
           <Box className={styles.buttonContent}>

@@ -6,10 +6,19 @@ interface UseNotificationsProps {
   isInitiallySubscribed?: boolean;
 }
 
+interface PushSubscriptionData {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
 interface UseNotificationsReturn {
   isSubscribed: boolean;
   subscribe: () => Promise<boolean>;
   unsubscribe: () => Promise<boolean>;
+  getSubscription: () => Promise<PushSubscriptionData | null>;
 }
 
 const PUBLIC_VAPID_KEY = import.meta.env.VITE_PUBLIC_VAPID_KEY;
@@ -119,9 +128,46 @@ export const useNotifications = ({ userId, isInitiallySubscribed = false }: UseN
     }
   };
 
+  // Get or create subscription without saving to DB (for transactional onboarding)
+  const getSubscription = async (): Promise<PushSubscriptionData | null> => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.error('Push notifications not supported');
+      return null;
+    }
+
+    try {
+      // Request permission
+      if (Notification.permission !== 'granted') {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.error('Notification permission denied');
+          return null;
+        }
+      }
+
+      // Wait for SW to be ready
+      const registration = await navigator.serviceWorker.ready;
+
+      // Create or get subscription
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY) as BufferSource,
+        });
+      }
+
+      return formatPushSubscription(subscription);
+    } catch (err) {
+      console.error('Failed to get subscription:', err);
+      return null;
+    }
+  };
+
   return {
     isSubscribed,
     subscribe,
     unsubscribe,
+    getSubscription,
   };
 };

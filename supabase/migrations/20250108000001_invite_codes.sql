@@ -94,3 +94,12 @@ CREATE POLICY "Pill takers can read linked partner" ON users
       AND partnerships.status = 'active'
     )
   );
+
+-- ============================================================================
+-- PILL_TRACKING: Allow users to create their own pill entries
+-- ============================================================================
+-- This enables users to mark pills as taken before the cron job creates
+-- the daily entry (e.g., first day after onboarding)
+
+CREATE POLICY "Users can create own pills" ON pill_tracking
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
