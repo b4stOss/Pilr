@@ -157,6 +157,7 @@ export function usePillTracking({ userId, daysToFetch = 60 }: UsePillTrackingPro
         setPillsByDate((prevMap) => {
           const newMap = new Map(prevMap);
           newMap.set(dateKey, [updatedPill as PillTrackingRow]);
+          setStreak(calculateStreak(newMap));
           return newMap;
         });
       } else {
@@ -185,6 +186,7 @@ export function usePillTracking({ userId, daysToFetch = 60 }: UsePillTrackingPro
         setPillsByDate((prevMap) => {
           const newMap = new Map(prevMap);
           newMap.set(dateKey, [newPill]);
+          setStreak(calculateStreak(newMap));
           return newMap;
         });
       }

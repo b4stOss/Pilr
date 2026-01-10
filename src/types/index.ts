@@ -81,6 +81,7 @@ export interface PushSubscriptionData {
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
+  profileLoaded: boolean;
   profile: UserRow | null;
   partnerships: PartnershipRow[];
   activeRole: AppRole | null;

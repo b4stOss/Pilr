@@ -55,6 +55,8 @@
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  /* Prevent iOS from intercepting touch gestures */
+  touch-action: none;
 }
 
 .mainButton:hover {

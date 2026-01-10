@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 interface UseHoldToConfirmOptions {
   /** Duration in ms to hold before confirming (default: 1200) */
@@ -14,10 +14,13 @@ interface UseHoldToConfirmReturn {
   isHolding: boolean;
   /** Progress percentage (0-100) */
   progress: number;
-  /** Call on mouse/touch down */
-  startHold: () => void;
-  /** Call on mouse/touch up or leave */
-  endHold: () => void;
+  /** Bind these props to your button element */
+  holdProps: {
+    onPointerDown: (e: React.PointerEvent) => void;
+    onPointerUp: (e: React.PointerEvent) => void;
+    onPointerCancel: (e: React.PointerEvent) => void;
+    onPointerLeave: (e: React.PointerEvent) => void;
+  };
 }
 
 export function useHoldToConfirm({
@@ -31,7 +34,7 @@ export function useHoldToConfirm({
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
-  const isHoldingRef = useRef(false);
+  const activePointerRef = useRef<number | null>(null);
 
   const clearTimers = useCallback(() => {
     if (holdTimerRef.current) {
@@ -45,22 +48,26 @@ export function useHoldToConfirm({
   }, []);
 
   const endHold = useCallback(() => {
-    isHoldingRef.current = false;
+    activePointerRef.current = null;
     setIsHolding(false);
     setProgress(0);
     clearTimers();
   }, [clearTimers]);
 
-  const startHold = useCallback(() => {
-    if (disabled) return;
+  const startHold = useCallback((pointerId: number) => {
+    if (disabled || activePointerRef.current !== null) return;
 
-    isHoldingRef.current = true;
+    activePointerRef.current = pointerId;
     setIsHolding(true);
     setProgress(0);
     startTimeRef.current = Date.now();
 
     // Update progress every 16ms (~60fps)
     progressIntervalRef.current = setInterval(() => {
+      if (activePointerRef.current === null) {
+        clearTimers();
+        return;
+      }
       const elapsed = Date.now() - startTimeRef.current;
       const newProgress = Math.min((elapsed / duration) * 100, 100);
       setProgress(newProgress);
@@ -68,20 +75,59 @@ export function useHoldToConfirm({
 
     // Trigger action after hold duration
     holdTimerRef.current = setTimeout(() => {
-      if (!isHoldingRef.current) return;
+      if (activePointerRef.current === null) return;
 
-      onConfirm();
-      isHoldingRef.current = false;
+      clearTimers();
+      activePointerRef.current = null;
       setIsHolding(false);
       setProgress(0);
-      clearTimers();
+      onConfirm();
     }, duration);
   }, [disabled, duration, onConfirm, clearTimers]);
+
+  // Global pointer up listener for reliability
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      if (activePointerRef.current !== null) {
+        endHold();
+      }
+    };
+
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+      clearTimers();
+    };
+  }, [endHold, clearTimers]);
+
+  const holdProps = {
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      startHold(e.pointerId);
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      if (e.pointerId === activePointerRef.current) {
+        endHold();
+      }
+    },
+    onPointerCancel: (e: React.PointerEvent) => {
+      if (e.pointerId === activePointerRef.current) {
+        endHold();
+      }
+    },
+    onPointerLeave: (e: React.PointerEvent) => {
+      if (e.pointerId === activePointerRef.current) {
+        endHold();
+      }
+    },
+  };
 
   return {
     isHolding,
     progress,
-    startHold,
-    endHold,
+    holdProps,
   };
 }
