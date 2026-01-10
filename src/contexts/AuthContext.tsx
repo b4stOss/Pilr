@@ -2,7 +2,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContextType, PartnershipRow, UserRow, AppRole } from '../types';
 import { showErrorNotification } from '../utils';
 
@@ -20,8 +19,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [partnerships, setPartnerships] = useState<PartnershipRow[]>([]);
   const [activeRole, setActiveRole] = useState<AppRole | null>(null);
   const [hasPushSubscription, setHasPushSubscription] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
 
   const ensureUserRow = useCallback(async (authUser: User) => {
     try {
@@ -37,7 +34,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      // Single query on unified users table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -49,7 +45,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setProfile(userData);
       setHasPushSubscription(Boolean(userData?.push_subscription));
 
-      // Fetch partnerships
       const { data: partnershipsData, error: partnershipsError } = await supabase
         .from('partnerships')
         .select('*')
@@ -68,27 +63,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       setActiveRole(computedRole);
-      setProfileLoaded(true);
     } catch (error) {
       console.error('Error loading profile data:', error);
       showErrorNotification('Failed to load your profile. Please refresh the page.');
-      setProfileLoaded(true); // Still mark as loaded to avoid infinite loading
+    } finally {
+      setProfileLoaded(true);
     }
   }, []);
 
   // Auth state management - following Supabase best practices
+  // No async operations in callback, deferred to separate useEffect
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') {
-        // Handle initial session on page load
-        if (session?.user) {
-          setUser(session.user);
-          // Load profile in a separate effect to avoid async in callback
-        } else {
-          setUser(null);
-        }
+        setUser(session?.user ?? null);
         setLoading(false);
       } else if (event === 'SIGNED_IN') {
         setUser(session?.user ?? null);
@@ -101,7 +91,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setHasPushSubscription(false);
         setProfileLoaded(false);
       } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        // Update user but don't reload profile
         if (session?.user) {
           setUser(session.user);
         }
@@ -113,27 +102,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  // Load profile when user changes
+  // Load profile when user changes (deferred from onAuthStateChange)
   useEffect(() => {
     if (!user) {
-      setProfileLoaded(true); // No user = nothing to load
+      setProfileLoaded(true);
       return;
     }
 
     let cancelled = false;
 
     const loadProfile = async () => {
-      try {
-        await ensureUserRow(user);
-        if (!cancelled) {
-          await fetchProfile(user.id);
-        }
-      } catch (error) {
-        console.error('[Auth] Error loading profile:', error);
-      } finally {
-        if (!cancelled) {
-          setProfileLoaded(true);
-        }
+      await ensureUserRow(user);
+      if (!cancelled) {
+        await fetchProfile(user.id);
       }
     };
 
@@ -143,46 +124,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       cancelled = true;
     };
   }, [user, ensureUserRow, fetchProfile]);
-
-  useEffect(() => {
-    // Wait for both auth and profile to be loaded
-    if (loading || !profileLoaded || !user) return;
-
-    const currentPath = location.pathname;
-
-    // Onboarding pages - let them manage their own navigation
-    const onboardingPages = ['/role', '/setup-reminder', '/notifications'];
-    const isOnOnboardingPage = onboardingPages.includes(currentPath);
-
-    // If user hasn't completed onboarding (no role in DB)
-    if (!activeRole) {
-      // Redirect to /role if not already on an onboarding page
-      if (!isOnOnboardingPage) {
-        navigate('/role', { replace: true });
-      }
-      // Let onboarding pages handle their own logic
-      return;
-    }
-
-    // User has completed onboarding - apply post-onboarding routing
-
-    // Allow access to onboarding pages (for potential settings changes later)
-    if (isOnOnboardingPage) {
-      return;
-    }
-
-    // Navigate to appropriate home page based on role
-    if (activeRole === 'partner') {
-      if (currentPath !== '/partner' && currentPath !== '/enter-code') {
-        navigate('/partner', { replace: true });
-      }
-      return;
-    }
-
-    if (activeRole === 'pill_taker' && currentPath !== '/home') {
-      navigate('/home', { replace: true });
-    }
-  }, [activeRole, profileLoaded, loading, navigate, location.pathname, user]);
 
   const signInWithGoogle = async () => {
     try {
@@ -202,7 +143,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      navigate('/');
+      // Navigation handled by RouterGuard when user becomes null
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
@@ -217,6 +158,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const contextValue: AuthContextType = {
     user,
     loading,
+    profileLoaded,
     profile,
     partnerships,
     activeRole,

@@ -19,20 +19,16 @@ export function NotificationPermissionPage() {
   });
 
   useEffect(() => {
-    // Redirect if no user or no role selected
-    if (!user) {
-      navigate('/');
-      return;
-    }
+    // Flow validation: ensure previous onboarding steps are completed
+    // Auth is already handled by RouterGuard
     if (!onboardingData.role) {
-      navigate('/role');
+      navigate('/role', { replace: true });
       return;
     }
-    // Pill takers must have set reminder time
     if (onboardingData.role === 'pill_taker' && !onboardingData.reminderTime) {
-      navigate('/setup-reminder');
+      navigate('/setup-reminder', { replace: true });
     }
-  }, [user, onboardingData.role, onboardingData.reminderTime, navigate]);
+  }, [onboardingData.role, onboardingData.reminderTime, navigate]);
 
   const handleEnableNotifications = async () => {
     if (!user) return;
@@ -62,7 +58,8 @@ export function NotificationPermissionPage() {
     }
   };
 
-  if (!user || !onboardingData.role) {
+  // Show nothing while redirecting (flow validation)
+  if (!onboardingData.role) {
     return null;
   }
 

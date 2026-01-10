@@ -1,106 +1,104 @@
-import { RouteObject, Navigate } from 'react-router-dom';
-import { Center, Loader } from '@mantine/core';
+import { RouteObject } from 'react-router-dom';
 import { HomePage } from '../pages/HomePage';
 import { LoginPage } from '../pages/LoginPage';
 import { MainLayout } from '../layouts/MainLayout';
-import { useAuth } from '../contexts/AuthContext';
 import { PartnerPage } from '../pages/PartnerPage';
 import { EnterCodePage } from '../pages/EnterCodePage';
 import { RoleSelectionPage } from '../pages/RoleSelectionPage';
 import { ReminderSetupPage } from '../pages/ReminderSetupPage';
 import { NotificationPermissionPage } from '../pages/NotificationPermissionPage';
+import { RouterGuard } from '../components/RouterGuard';
 
-// Layout wrapper component
 function WithLayout({ children }: { children: React.ReactNode }) {
   return <MainLayout>{children}</MainLayout>;
 }
 
-// Auth check with loading state
-function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <Center style={{ height: '100vh' }}>
-        <Loader color="black" />
-      </Center>
-    );
-  }
-
-  return user ? <>{children}</> : <Navigate to="/" />;
-}
-
 export const routes: RouteObject[] = [
+  // Public route (login)
   {
     path: '/',
     element: (
-      <WithLayout>
-        <LoginPage />
-      </WithLayout>
+      <RouterGuard type="public">
+        <WithLayout>
+          <LoginPage />
+        </WithLayout>
+      </RouterGuard>
     ),
   },
+
+  // Onboarding routes
   {
     path: '/role',
     element: (
-      <RequireAuth>
+      <RouterGuard type="onboarding">
         <WithLayout>
           <RoleSelectionPage />
         </WithLayout>
-      </RequireAuth>
+      </RouterGuard>
     ),
   },
   {
     path: '/setup-reminder',
     element: (
-      <RequireAuth>
+      <RouterGuard type="onboarding">
         <WithLayout>
           <ReminderSetupPage />
         </WithLayout>
-      </RequireAuth>
+      </RouterGuard>
     ),
   },
   {
     path: '/notifications',
     element: (
-      <RequireAuth>
+      <RouterGuard type="onboarding">
         <WithLayout>
           <NotificationPermissionPage />
         </WithLayout>
-      </RequireAuth>
+      </RouterGuard>
     ),
   },
+
+  // Protected routes (require completed onboarding)
   {
     path: '/home',
     element: (
-      <RequireAuth>
+      <RouterGuard type="protected">
         <WithLayout>
           <HomePage />
         </WithLayout>
-      </RequireAuth>
+      </RouterGuard>
     ),
   },
   {
     path: '/partner',
     element: (
-      <RequireAuth>
+      <RouterGuard type="protected">
         <WithLayout>
           <PartnerPage />
         </WithLayout>
-      </RequireAuth>
+      </RouterGuard>
     ),
   },
   {
     path: '/enter-code',
     element: (
-      <RequireAuth>
+      <RouterGuard type="protected">
         <WithLayout>
           <EnterCodePage />
         </WithLayout>
-      </RequireAuth>
+      </RouterGuard>
     ),
   },
+
+  // Catch-all redirect to login
   {
     path: '*',
-    element: <Navigate to="/" />,
+    element: (
+      <RouterGuard type="public">
+        <WithLayout>
+          <LoginPage />
+        </WithLayout>
+      </RouterGuard>
+    ),
   },
 ];

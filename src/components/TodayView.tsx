@@ -25,7 +25,7 @@ export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditRemin
     : '--:--';
   const takenTime = pill?.taken_at ? DateTime.fromISO(pill.taken_at).toFormat('HH:mm') : null;
 
-  const { isHolding, progress, startHold, endHold } = useHoldToConfirm({
+  const { isHolding, progress, holdProps } = useHoldToConfirm({
     duration: 1200,
     onConfirm: onMarkTaken,
     disabled: isTaken,
@@ -37,7 +37,7 @@ export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditRemin
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <Stack gap="xl" align="center" style={{ flex: 1 }} justify="center">
+    <Stack gap="xl" align="center" style={{ flex: 1 }} justify="center" pb={50}>
       {/* Date */}
       <Title order={1} ta="center">
         {dateString}
@@ -113,11 +113,7 @@ export function TodayView({ pill, reminderTime, streak, onMarkTaken, onEditRemin
 
         {/* Main button */}
         <UnstyledButton
-          onMouseDown={startHold}
-          onMouseUp={endHold}
-          onMouseLeave={endHold}
-          onTouchStart={startHold}
-          onTouchEnd={endHold}
+          {...holdProps}
           disabled={isTaken || !pill}
           className={`${styles.mainButton} ${isTaken ? styles.mainButtonTaken : ''} ${isHolding ? styles.mainButtonHolding : ''}`}
         >

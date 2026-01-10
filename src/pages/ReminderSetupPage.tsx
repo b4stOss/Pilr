@@ -3,7 +3,6 @@ import { TimePicker } from '@mantine/dates';
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconBellRinging, IconHeart, IconClock, IconArrowLeft } from '@tabler/icons-react';
-import { useAuth } from '../contexts/AuthContext';
 import { useOnboarding } from '../contexts/OnboardingContext';
 
 /**
@@ -20,7 +19,6 @@ function isValidReminderTime(time: string | null): boolean {
 
 export function ReminderSetupPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { data: onboardingData, setReminderTime } = useOnboarding();
 
   const timeError = useMemo(() => {
@@ -34,27 +32,25 @@ export function ReminderSetupPage() {
   const canContinue = onboardingData.reminderTime && !timeError;
 
   useEffect(() => {
-    // Redirect if no user or no role selected
-    if (!user) {
-      navigate('/');
-      return;
-    }
+    // Flow validation: ensure previous onboarding steps are completed
+    // Auth is already handled by RouterGuard
     if (!onboardingData.role) {
-      navigate('/role');
+      navigate('/role', { replace: true });
       return;
     }
     // Partners don't need this step
     if (onboardingData.role !== 'pill_taker') {
-      navigate('/notifications');
+      navigate('/notifications', { replace: true });
     }
-  }, [user, onboardingData.role, navigate]);
+  }, [onboardingData.role, navigate]);
 
   const handleContinue = () => {
     if (!canContinue) return;
     navigate('/notifications');
   };
 
-  if (!user || onboardingData.role !== 'pill_taker') {
+  // Show nothing while redirecting (flow validation)
+  if (onboardingData.role !== 'pill_taker') {
     return null;
   }
 
